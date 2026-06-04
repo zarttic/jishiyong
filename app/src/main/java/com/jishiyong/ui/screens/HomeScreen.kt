@@ -41,6 +41,8 @@ fun HomeScreen(
     onItemClick: (Long) -> Unit,
     onAddClick: () -> Unit,
     onStatsClick: () -> Unit,
+    onCheckUpdate: () -> Unit = {},
+    isCheckingUpdate: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val activeItems by viewModel.activeItems.collectAsState()
@@ -132,6 +134,29 @@ fun HomeScreen(
                                         contentDescription = "统计",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                }
+
+                                // 检查更新按钮
+                                IconButton(
+                                    onClick = onCheckUpdate,
+                                    enabled = !isCheckingUpdate,
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    if (isCheckingUpdate) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Rounded.SystemUpdate,
+                                            contentDescription = "检查更新",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }

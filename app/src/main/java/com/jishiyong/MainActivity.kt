@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,11 +22,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.jishiyong.ui.components.UpdateDialog
 import com.jishiyong.ui.screens.AddItemScreen
 import com.jishiyong.ui.screens.HomeScreen
 import com.jishiyong.ui.screens.ItemDetailScreen
 import com.jishiyong.ui.screens.StatisticsScreen
 import com.jishiyong.ui.theme.JiShiYongTheme
+import com.jishiyong.update.UpdateViewModel
 import com.jishiyong.viewmodel.MainViewModel
 import com.jishiyong.viewmodel.StatisticsViewModel
 
@@ -66,6 +71,23 @@ fun JiShiYongNavigation() {
     val navController = rememberNavController()
     val mainViewModel: MainViewModel = viewModel()
     val statisticsViewModel: StatisticsViewModel = viewModel()
+    val updateViewModel: UpdateViewModel = viewModel()
+
+    val updateUiState by updateViewModel.uiState.collectAsState()
+
+    // 应用启动时检查更新
+    LaunchedEffect(Unit) {
+        updateViewModel.checkForUpdate(showDialogWhenAvailable = true)
+    }
+
+    // 更新对话框
+    UpdateDialog(
+        uiState = updateUiState,
+        onDownload = { updateViewModel.downloadUpdate() },
+        onInstall = { updateViewModel.installUpdate() },
+        onDismiss = { updateViewModel.dismissDialog() },
+        onClearError = { updateViewModel.clearError() }
+    )
 
     NavHost(
         navController = navController,
@@ -83,7 +105,11 @@ fun JiShiYongNavigation() {
                 },
                 onStatsClick = {
                     navController.navigate("statistics")
-                }
+                },
+                onCheckUpdate = {
+                    updateViewModel.checkForUpdate(showDialogWhenAvailable = true)
+                },
+                isCheckingUpdate = updateUiState.isChecking
             )
         }
 
