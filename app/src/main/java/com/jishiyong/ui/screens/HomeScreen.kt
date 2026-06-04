@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
@@ -339,7 +340,10 @@ private fun OverviewCards(
         ) {
             Text(
                 text = "$totalItems",
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontFamily = NumberFontFamily,
+                    letterSpacing = (-1).sp
+                ),
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
@@ -357,7 +361,10 @@ private fun OverviewCards(
         ) {
             Text(
                 text = "$activeItems",
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontFamily = NumberFontFamily,
+                    letterSpacing = (-1).sp
+                ),
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
@@ -377,7 +384,10 @@ private fun OverviewCards(
         ) {
             Text(
                 text = "$expiredItems",
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontFamily = NumberFontFamily,
+                    letterSpacing = (-1).sp
+                ),
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )

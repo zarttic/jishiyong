@@ -93,6 +93,9 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
+    // Google Fonts
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.0")
+
     // Gson (for Room type converters)
     implementation("com.google.code.gson:gson:2.10.1")
 }
