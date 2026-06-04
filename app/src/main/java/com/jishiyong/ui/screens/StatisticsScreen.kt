@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.ItemCategory
 import com.jishiyong.ui.components.*
@@ -243,7 +244,10 @@ fun StatisticsScreen(
                             }
                             Text(
                                 text = "$wasteRate%",
-                                style = MaterialTheme.typography.displaySmall,
+                                style = MaterialTheme.typography.displaySmall.copy(
+                                    fontFamily = NumberFontFamily,
+                                    letterSpacing = (-2).sp
+                                ),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
@@ -297,7 +301,10 @@ private fun StatItem(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = "$count",
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineLarge.copy(
+                fontFamily = NumberFontFamily,
+                letterSpacing = (-1).sp
+            ),
             fontWeight = FontWeight.Bold,
             color = color
         )
@@ -354,7 +361,9 @@ private fun CategoryStatRow(
 
         Text(
             text = "$count",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontFamily = NumberFontFamily
+            ),
             fontWeight = FontWeight.Bold,
             modifier = Modifier.width(30.dp)
         )
