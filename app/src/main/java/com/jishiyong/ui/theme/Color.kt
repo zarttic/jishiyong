@@ -1,37 +1,85 @@
 package com.jishiyong.ui.theme
 
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// 主题色 - 清新绿色系（代表新鲜、及时）
-val Green40 = Color(0xFF2E7D32)
-val Green80 = Color(0xFFA5D6A7)
-val Green90 = Color(0xFFC8E6C9)
+// ==================== 主色调 - 渐变绿 ====================
+val Primary = Color(0xFF00C853)
+val PrimaryVariant = Color(0xFF00E676)
+val PrimaryDark = Color(0xFF00A844)
+val OnPrimary = Color(0xFFFFFFFF)
 
-val GreenGrey40 = Color(0xFF4E6E50)
-val GreenGrey80 = Color(0xFFB8CCB9)
+// 深色主题主色
+val PrimaryDarkTheme = Color(0xFF69F0AE)
+val PrimaryVariantDark = Color(0xFFB9F6CA)
 
-val Teal40 = Color(0xFF00695C)
-val Teal80 = Color(0xFF80CBC4)
+// ==================== 表面和背景 ====================
+val SurfaceLight = Color(0xFFFAFAFA)
+val SurfaceDark = Color(0xFF121212)
+val SurfaceVariantLight = Color(0xFFF5F5F5)
+val SurfaceVariantDark = Color(0xFF1E1E1E)
 
-// 背景和表面
-val LightBackground = Color(0xFFF8FAF0)
-val LightSurface = Color(0xFFFFFFFF)
-val DarkBackground = Color(0xFF1A1C18)
-val DarkSurface = Color(0xFF2B2D27)
+val BackgroundLight = Color(0xFFFFFFFF)
+val BackgroundDark = Color(0xFF0A0A0A)
 
-// 过期状态颜色
-val StatusFresh = Color(0xFF4CAF50)         // 新鲜 - 绿色
-val StatusWarning = Color(0xFFFF9800)       // 即将过期 - 橙色
-val StatusUrgent = Color(0xFFFF5722)        // 临近过期 - 深橙
-val StatusCritical = Color(0xFFF44336)      // 紧急 - 红色
-val StatusExpired = Color(0xFF9E9E9E)       // 已过期 - 灰色
+val CardLight = Color(0xFFFFFFFF)
+val CardDark = Color(0xFF1A1A1A)
 
-// 分类颜色
-val CategoryFood = Color(0xFFFF7043)
-val CategoryDrink = Color(0xFF42A5F5)
-val CategoryDaily = Color(0xFFAB47BC)
-val CategoryMedicine = Color(0xFFEF5350)
-val CategoryCosmetics = Color(0xFFEC407A)
-val CategoryElectronics = Color(0xFF5C6BC0)
-val CategoryClothing = Color(0xFF26A69A)
-val CategoryOther = Color(0xFF78909C)
+// ==================== 状态颜色 - 更鲜艳 ====================
+val StatusFresh = Color(0xFF4CAF50)
+val StatusFreshLight = Color(0xFFE8F5E9)
+val StatusWarning = Color(0xFFFF9800)
+val StatusWarningLight = Color(0xFFFFF3E0)
+val StatusUrgent = Color(0xFFFF5722)
+val StatusUrgentLight = Color(0xFFFBE9E7)
+val StatusCritical = Color(0xFFF44336)
+val StatusCriticalLight = Color(0xFFFFEBEE)
+val StatusExpired = Color(0xFF9E9E9E)
+val StatusExpiredLight = Color(0xFFF5F5F5)
+
+// ==================== 渐变色 ====================
+val GradientPrimary = Brush.linearGradient(
+    colors = listOf(Color(0xFF00C853), Color(0xFF00E676))
+)
+
+val GradientPrimaryDark = Brush.linearGradient(
+    colors = listOf(Color(0xFF00A844), Color(0xFF00C853))
+)
+
+val GradientSunset = Brush.linearGradient(
+    colors = listOf(Color(0xFFFF6B6B), Color(0xFFFFE66D))
+)
+
+val GradientOcean = Brush.linearGradient(
+    colors = listOf(Color(0xFF667eea), Color(0xFF764ba2))
+)
+
+val GradientForest = Brush.linearGradient(
+    colors = listOf(Color(0xFF11998e), Color(0xFF38ef7d))
+)
+
+val GradientCard = Brush.linearGradient(
+    colors = listOf(Color(0xFFFFFFFF), Color(0xFFF8FFF8))
+)
+
+val GradientCardDark = Brush.linearGradient(
+    colors = listOf(Color(0xFF1A1A1A), Color(0xFF2A2A2A))
+)
+
+// ==================== 分类颜色 - 更现代 ====================
+val CategoryFood = Color(0xFFFF6B6B)
+val CategoryDrink = Color(0xFF4ECDC4)
+val CategoryDaily = Color(0xFF95E1D3)
+val CategoryMedicine = Color(0xFFF38181)
+val CategoryCosmetics = Color(0xFFAA96DA)
+val CategoryElectronics = Color(0xFF6C5CE7)
+val CategoryClothing = Color(0xFFFFA07A)
+val CategoryOther = Color(0xFF95A5A6)
+
+// ==================== 文字颜色 ====================
+val TextPrimary = Color(0xFF1A1A1A)
+val TextSecondary = Color(0xFF666666)
+val TextTertiary = Color(0xFF999999)
+val TextPrimaryDark = Color(0xFFEEEEEE)
+val TextSecondaryDark = Color(0xFFAAAAAA)
+val TextTertiaryDark = Color(0xFF777777)
