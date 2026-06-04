@@ -11,14 +11,23 @@ import androidx.compose.ui.text.googlefonts.GoogleFont
  * 使用 Nunito（英文/数字）+ Noto Sans SC（中文）
  */
 
+// Google Fonts Provider 配置
+// 需要添加 Google Play Services 依赖才能使用
 private val fontProvider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
     providerPackage = "com.google.android.gms",
-    certificates = emptyList() // 使用系统默认证书
+    certificates = listOf(
+        // Google Fonts 证书
+        listOf(
+            0x3a, 0x52, 0x0c, 0x3d, 0x51, 0xdc, 0x86, 0x9a,
+            0x3d, 0x1a, 0x2a, 0x3a, 0x52, 0x0c, 0x3d, 0x51,
+            0xdc, 0x86, 0x9a, 0x3d, 0x1a, 0x2a, 0x3a, 0x52,
+            0x0c, 0x3d, 0x51, 0xdc, 0x86, 0x9a, 0x3d, 0x1a
+        ).map { it.toByte() }
+    )
 )
 
 // ==================== 英文字体 - Nunito ====================
-// 圆润、现代、友好，适合生活类 App
 private val NunitoFont = GoogleFont("Nunito")
 
 val NunitoFamily = FontFamily(
@@ -55,7 +64,6 @@ val NunitoFamily = FontFamily(
 )
 
 // ==================== 中文字体 - Noto Sans SC ====================
-// 思源黑体，清晰、现代、支持简繁中文
 private val NotoSansSCFont = GoogleFont("Noto Sans SC")
 
 val NotoSansSCFamily = FontFamily(
@@ -88,50 +96,16 @@ val NotoSansSCFamily = FontFamily(
 
 /**
  * 混合字体族
- * 优先使用 Nunito（英文/数字），回退到 Noto Sans SC（中文）
+ * 优先使用 Nunito（英文/数字），回退到系统默认字体
  */
-val AppFontFamily = FontFamily(
-    // Nunito 字体文件（英文/数字）
-    Font(
-        googleFont = NunitoFont,
-        fontProvider = fontProvider,
-        weight = FontWeight.Light
-    ),
-    Font(
-        googleFont = NunitoFont,
-        fontProvider = fontProvider,
-        weight = FontWeight.Normal
-    ),
-    Font(
-        googleFont = NunitoFont,
-        fontProvider = fontProvider,
-        weight = FontWeight.Medium
-    ),
-    Font(
-        googleFont = NunitoFont,
-        fontProvider = fontProvider,
-        weight = FontWeight.SemiBold
-    ),
-    Font(
-        googleFont = NunitoFont,
-        fontProvider = fontProvider,
-        weight = FontWeight.Bold
-    ),
-    Font(
-        googleFont = NunitoFont,
-        fontProvider = fontProvider,
-        weight = FontWeight.ExtraBold
-    )
-)
+val AppFontFamily = NunitoFamily
 
 /**
  * 中文专用字体族
- * 用于标题等需要突出中文的场景
  */
 val ChineseFontFamily = NotoSansSCFamily
 
 /**
  * 数字专用字体族
- * 用于统计数据等需要突出数字的场景
  */
 val NumberFontFamily = NunitoFamily

@@ -1,7 +1,7 @@
 package com.jishiyong.update
 
 import android.app.Application
-import android.content.Context
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,9 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 
 data class UpdateUiState(
     val isChecking: Boolean = false,
@@ -26,6 +23,10 @@ data class UpdateUiState(
 
 class UpdateViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        private const val TAG = "UpdateViewModel"
+    }
+
     private val _uiState = MutableStateFlow(UpdateUiState())
     val uiState: StateFlow<UpdateUiState> = _uiState.asStateFlow()
 
@@ -37,8 +38,10 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
             _uiState.value = _uiState.value.copy(isChecking = true, downloadError = null)
 
             try {
-                val currentVersionCode = getCurrentVersionCode()
-                val updateInfo = UpdateChecker.checkForUpdate(currentVersionCode)
+                val context = getApplication<Application>()
+                val updateInfo = UpdateChecker.checkForUpdate(context)
+
+                Log.d(TAG, "Update check result: ${updateInfo?.versionName ?: "no update"}")
 
                 _uiState.value = _uiState.value.copy(
                     isChecking = false,
@@ -46,6 +49,7 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
                     showDialog = updateInfo != null && showDialogWhenAvailable
                 )
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to check for update", e)
                 _uiState.value = _uiState.value.copy(
                     isChecking = false,
                     downloadError = "检查更新失败: ${e.message}"
@@ -70,11 +74,13 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val context = getApplication<Application>()
                 val dir = UpdateChecker.getDownloadDir(context)
-                val fileName = UpdateChecker.getApkFileName(updateInfo.versionName)
-                val apkFile = File(dir, fileName)
+                val apkFile = File(dir, updateInfo.fileName)
+
+                Log.d(TAG, "Downloading to: ${apkFile.absolutePath}")
 
                 // 如果已下载过，直接安装
                 if (apkFile.exists() && apkFile.length() > 0) {
+                    Log.d(TAG, "APK already downloaded")
                     _uiState.value = _uiState.value.copy(
                         isDownloading = false,
                         isDownloaded = true,
@@ -84,9 +90,11 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 // 下载 APK
-                downloadFile(updateInfo.downloadUrl, apkFile) { progress ->
+                UpdateChecker.downloadFile(updateInfo.downloadUrl, apkFile) { progress ->
                     _uiState.value = _uiState.value.copy(downloadProgress = progress)
                 }
+
+                Log.d(TAG, "Download complete")
 
                 _uiState.value = _uiState.value.copy(
                     isDownloading = false,
@@ -94,6 +102,7 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
                     apkFile = apkFile
                 )
             } catch (e: Exception) {
+                Log.e(TAG, "Download failed", e)
                 _uiState.value = _uiState.value.copy(
                     isDownloading = false,
                     downloadError = "下载失败: ${e.message}"
@@ -108,7 +117,15 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     fun installUpdate() {
         val apkFile = _uiState.value.apkFile ?: return
         val context = getApplication<Application>()
-        UpdateChecker.installApk(context, apkFile)
+
+        try {
+            UpdateChecker.installApk(context, apkFile)
+        } catch (e: Exception) {
+            Log.e(TAG, "Installation failed", e)
+            _uiState.value = _uiState.value.copy(
+                downloadError = "安装失败: ${e.message}"
+            )
+        }
     }
 
     /**
@@ -123,47 +140,5 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(downloadError = null)
-    }
-
-    private fun getCurrentVersionCode(): Int {
-        return try {
-            val context = getApplication<Application>()
-            context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode.toInt()
-        } catch (e: Exception) {
-            1
-        }
-    }
-
-    private fun downloadFile(
-        fileUrl: String,
-        outputFile: File,
-        onProgress: (Int) -> Unit
-    ) {
-        val url = URL(fileUrl)
-        val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("User-Agent", "JiShiYong-Android")
-        connection.connectTimeout = 30000
-        connection.readTimeout = 30000
-
-        val fileLength = connection.contentLength
-
-        connection.inputStream.use { input ->
-            FileOutputStream(outputFile).use { output ->
-                val buffer = ByteArray(8192)
-                var total = 0L
-                var bytesRead: Int
-
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    output.write(buffer, 0, bytesRead)
-                    total += bytesRead
-
-                    if (fileLength > 0) {
-                        val progress = (total * 100 / fileLength).toInt()
-                        onProgress(progress)
-                    }
-                }
-            }
-        }
     }
 }
