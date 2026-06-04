@@ -38,10 +38,8 @@ fun ExpiryOverviewCard(
                 label = "全部",
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Divider(
-                modifier = Modifier
-                    .height(40.dp)
-                    .width(1.dp),
+            VerticalDivider(
+                modifier = Modifier.height(40.dp),
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
             )
             OverviewStatItem(
@@ -49,10 +47,8 @@ fun ExpiryOverviewCard(
                 label = "进行中",
                 color = StatusFresh
             )
-            Divider(
-                modifier = Modifier
-                    .height(40.dp)
-                    .width(1.dp),
+            VerticalDivider(
+                modifier = Modifier.height(40.dp),
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
             )
             OverviewStatItem(

@@ -6,6 +6,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -74,7 +76,7 @@ fun ItemDetailScreen(
                 title = { Text("物品详情") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
@@ -213,7 +215,7 @@ fun ItemDetailScreen(
                     )
                     if (item.note.isNotBlank()) {
                         DetailRow(
-                            icon = Icons.Default.Notes,
+                            icon = Icons.AutoMirrored.Filled.Notes,
                             label = "备注",
                             value = item.note
                         )
