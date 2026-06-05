@@ -9,11 +9,11 @@ import androidx.compose.ui.text.googlefonts.GoogleFont
  * Google Fonts 配置
  */
 
-// Google Fonts Provider
+// Google Fonts Provider - 使用系统默认证书
 private val fontProvider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
     providerPackage = "com.google.android.gms",
-    certificates = GoogleFont.Provider.DEFAULT_CERTIFICATES
+    certificates = listOf(listOf())
 )
 
 // ==================== 英文字体 - Nunito ====================
