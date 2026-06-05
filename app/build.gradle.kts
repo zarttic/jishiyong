@@ -53,7 +53,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            // v2.4.0 was the first R8-minified release APK and crashes on launch.
+            // Keep release unminified until minified APKs are covered by device smoke tests.
+            isMinifyEnabled = false
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -123,6 +125,4 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
-    // Gson (for Room type converters)
-    implementation("com.google.code.gson:gson:2.10.1")
 }
