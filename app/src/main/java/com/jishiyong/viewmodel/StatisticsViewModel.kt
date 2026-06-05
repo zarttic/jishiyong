@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 
@@ -40,38 +39,40 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
 
     fun loadStatistics() {
         viewModelScope.launch {
-            val categoryStats = repository.getCategoryStats()
-            val activeItems = repository.getActiveItems()
-            val consumedItems = repository.getConsumedItems()
+            try {
+                val categoryStats = repository.getCategoryStats()
 
-            // 计算本月统计
-            val selectedMonth = _uiState.value.selectedMonth
-            val startOfMonth = selectedMonth.atDay(1)
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .toEpochMilli()
-            val endOfMonth = selectedMonth.atEndOfMonth()
-                .atTime(23, 59, 59)
-                .atZone(ZoneId.systemDefault())
-                .toInstant()
-                .toEpochMilli()
+                // 计算本月统计
+                val selectedMonth = _uiState.value.selectedMonth
+                val startOfMonth = selectedMonth.atDay(1)
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+                val endOfMonth = selectedMonth.atEndOfMonth()
+                    .atTime(23, 59, 59)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
 
-            val monthlyStats = repository.getMonthlyConsumeStats(startOfMonth, endOfMonth)
+                val monthlyStats = repository.getMonthlyConsumeStats(startOfMonth, endOfMonth)
 
-            val consumedThisMonth = monthlyStats.sumOf { it.count }
-            val wastedThisMonth = monthlyStats
-                .filter { it.consumeType == com.jishiyong.data.db.entity.ConsumeType.EXPIRED }
-                .sumOf { it.count }
+                val consumedThisMonth = monthlyStats.sumOf { it.count }
+                val wastedThisMonth = monthlyStats
+                    .filter { it.consumeType == com.jishiyong.data.db.entity.ConsumeType.EXPIRED }
+                    .sumOf { it.count }
 
-            _uiState.value = StatisticsUiState(
-                categoryStats = categoryStats,
-                monthlyConsumeStats = monthlyStats,
-                activeItems = categoryStats.sumOf { it.count },
-                expiredItems = 0, // 需要单独查询
-                consumedThisMonth = consumedThisMonth,
-                wastedThisMonth = wastedThisMonth,
-                selectedMonth = selectedMonth
-            )
+                _uiState.value = StatisticsUiState(
+                    categoryStats = categoryStats,
+                    monthlyConsumeStats = monthlyStats,
+                    activeItems = categoryStats.sumOf { it.count },
+                    expiredItems = 0, // 需要单独查询
+                    consumedThisMonth = consumedThisMonth,
+                    wastedThisMonth = wastedThisMonth,
+                    selectedMonth = selectedMonth
+                )
+            } catch (_: Exception) {
+                // Keep the current screen state if old local data cannot be parsed.
+            }
         }
     }
 

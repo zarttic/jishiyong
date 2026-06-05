@@ -65,7 +65,6 @@ class MainActivity : ComponentActivity() {
 fun JiShiYongNavigation() {
     val navController = rememberNavController()
     val mainViewModel: MainViewModel = viewModel()
-    val statisticsViewModel: StatisticsViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -117,6 +116,7 @@ fun JiShiYongNavigation() {
 
         // 统计页面
         composable("statistics") {
+            val statisticsViewModel: StatisticsViewModel = viewModel()
             StatisticsScreen(
                 viewModel = statisticsViewModel,
                 onBack = { navController.popBackStack() }

@@ -48,22 +48,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     (query.isEmpty() || item.name.contains(query, ignoreCase = true) ||
                             item.note.contains(query, ignoreCase = true))
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }
+        .catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** 已消费物品列表 */
     val consumedItems: StateFlow<List<Item>> = repository.getConsumedItems()
+        .catch { emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** 总物品数 */
     val totalCount: StateFlow<Int> = repository.getTotalCount()
+        .catch { emit(0) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     /** 活跃物品数 */
     val activeCount: StateFlow<Int> = repository.getActiveCount()
+        .catch { emit(0) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     /** 已过期物品数 */
     val expiredCount: StateFlow<Int> = repository.getExpiredCount()
+        .catch { emit(0) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // ======================== 操作 ========================

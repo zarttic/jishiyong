@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.work.*
 import com.jishiyong.data.db.AppDatabase
 import com.jishiyong.data.repository.ItemRepository
@@ -31,7 +32,11 @@ class JiShiYongApp : Application() {
         createNotificationChannel()
 
         // 调度过期提醒任务
-        scheduleExpirationReminder()
+        try {
+            scheduleExpirationReminder()
+        } catch (exception: Exception) {
+            Log.w(TAG, "Failed to schedule expiration reminders", exception)
+        }
     }
 
     private fun createNotificationChannel() {
@@ -89,6 +94,8 @@ class JiShiYongApp : Application() {
     }
 
     companion object {
+        private const val TAG = "JiShiYongApp"
+
         lateinit var instance: JiShiYongApp
             private set
     }
