@@ -10,7 +10,6 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -19,7 +18,6 @@ import java.net.URL
 
 /**
  * GitHub Release 更新检查器
- * 参考 hannesa2/githubAppUpdate 实现
  */
 data class UpdateInfo(
     val versionName: String,
@@ -34,8 +32,6 @@ object UpdateChecker {
 
     private const val TAG = "UpdateChecker"
     private const val GITHUB_API_URL = "https://api.github.com/repos/zarttic/jishiyong/releases/latest"
-    private const val CONNECT_TIMEOUT = 15000
-    private const val READ_TIMEOUT = 15000
 
     /**
      * 获取当前版本信息
@@ -78,23 +74,19 @@ object UpdateChecker {
                 requestMethod = "GET"
                 setRequestProperty("Accept", "application/vnd.github.v3+json")
                 setRequestProperty("User-Agent", "JiShiYong-Android")
-                connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
-                instanceFollowRedirects = true
+                connectTimeout = 15000
+                readTimeout = 15000
             }
 
-            val responseCode = connection.responseCode
-            Log.d(TAG, "API response code: $responseCode")
-
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = connection.inputStream.bufferedReader().readText()
+                val response = inputStream.bufferedReader().readText()
                 parseReleaseResponse(response, currentVersionCode)
             } else {
-                Log.e(TAG, "API request failed with code: $responseCode")
+                Log.e(TAG, "API request failed: $responseCode")
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to check for update", e)
+            Log.e(TAG, "Check update failed", e)
             null
         }
     }
@@ -102,17 +94,15 @@ object UpdateChecker {
     private fun parseReleaseResponse(json: String, currentVersionCode: Int): UpdateInfo? {
         try {
             val jsonObject = JSONObject(json)
-            val tagName = jsonObject.getString("tag_name") // 例如 "v2.0.0"
+            val tagName = jsonObject.getString("tag_name")
             val body = jsonObject.optString("body", "")
             val publishedAt = jsonObject.getString("published_at")
 
-            // 解析版本号
             val versionName = tagName.removePrefix("v")
             val versionCode = parseVersionCode(versionName)
 
-            Log.d(TAG, "Remote version: $versionName (code: $versionCode)")
+            Log.d(TAG, "Remote: $versionName ($versionCode), Local: $currentVersionCode")
 
-            // 查找 APK 下载链接
             val assets = jsonObject.getJSONArray("assets")
             var downloadUrl = ""
             var fileName = ""
@@ -123,41 +113,24 @@ object UpdateChecker {
                 if (name.endsWith(".apk")) {
                     downloadUrl = asset.getString("browser_download_url")
                     fileName = name
-                    Log.d(TAG, "Found APK: $name at $downloadUrl")
+                    Log.d(TAG, "Found APK: $name")
                     break
                 }
             }
 
-            if (downloadUrl.isEmpty()) {
-                Log.w(TAG, "No APK found in release")
-                return null
-            }
+            if (downloadUrl.isEmpty()) return null
 
-            // 比较版本
             return if (versionCode > currentVersionCode) {
-                Log.d(TAG, "New version available: $versionName")
-                UpdateInfo(
-                    versionName = versionName,
-                    versionCode = versionCode,
-                    downloadUrl = downloadUrl,
-                    releaseNotes = body,
-                    publishedAt = publishedAt,
-                    fileName = fileName
-                )
+                UpdateInfo(versionName, versionCode, downloadUrl, body, publishedAt, fileName)
             } else {
-                Log.d(TAG, "Already on latest version")
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse release response", e)
+            Log.e(TAG, "Parse failed", e)
             return null
         }
     }
 
-    /**
-     * 将版本号字符串转换为数字进行比较
-     * 例如 "2.0.0" -> 20000, "1.1.0" -> 10100
-     */
     private fun parseVersionCode(version: String): Int {
         val parts = version.split(".").map { it.toIntOrNull() ?: 0 }
         return when {
@@ -168,92 +141,100 @@ object UpdateChecker {
         }
     }
 
-    /**
-     * 获取下载目录
-     */
     fun getDownloadDir(context: Context): File {
         val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "updates")
-        if (!dir.exists()) {
-            dir.mkdirs()
-        }
+        if (!dir.exists()) dir.mkdirs()
         return dir
     }
 
     /**
-     * 下载文件（支持重定向）
+     * 下载文件 - 支持重定向
      */
-    fun downloadFile(
-        fileUrl: String,
-        outputFile: File,
-        onProgress: (Int) -> Unit
-    ) {
-        Log.d(TAG, "Downloading from: $fileUrl")
+    fun downloadFile(fileUrl: String, outputFile: File, onProgress: (Int) -> Unit) {
+        Log.d(TAG, "Downloading: $fileUrl")
 
         var currentUrl = fileUrl
-        var connection: HttpURLConnection
+        var connection: HttpURLConnection? = null
 
-        // 处理重定向
-        for (redirect in 0..5) {
-            val url = URL(currentUrl)
-            connection = url.openConnection() as HttpURLConnection
-            connection.apply {
-                requestMethod = "GET"
-                setRequestProperty("User-Agent", "JiShiYong-Android")
-                connectTimeout = 30000
-                readTimeout = 30000
-                instanceFollowRedirects = false
-            }
-
-            val code = connection.responseCode
-            Log.d(TAG, "Response code: $code for URL: $currentUrl")
-
-            if (code in 301..308) {
-                val location = connection.getHeaderField("Location")
-                if (location != null) {
-                    currentUrl = location
-                    Log.d(TAG, "Redirecting to: $currentUrl")
-                    connection.disconnect()
-                    continue
+        try {
+            // 处理重定向
+            for (i in 0..10) {
+                val url = URL(currentUrl)
+                connection = url.openConnection() as HttpURLConnection
+                connection.apply {
+                    requestMethod = "GET"
+                    setRequestProperty("User-Agent", "JiShiYong-Android")
+                    setRequestProperty("Accept", "application/octet-stream")
+                    connectTimeout = 30000
+                    readTimeout = 60000
+                    instanceFollowRedirects = false
                 }
-            }
 
-            if (code == HttpURLConnection.HTTP_OK) {
-                val fileLength = connection.contentLength
-                Log.d(TAG, "File size: $fileLength bytes")
+                val code = connection.responseCode
+                Log.d(TAG, "Response $code for: $currentUrl")
 
-                connection.inputStream.use { input ->
-                    FileOutputStream(outputFile).use { output ->
-                        val buffer = ByteArray(8192)
-                        var total = 0L
-                        var bytesRead: Int
-
-                        while (input.read(buffer).also { bytesRead = it } != -1) {
-                            output.write(buffer, 0, bytesRead)
-                            total += bytesRead
-
-                            if (fileLength > 0) {
-                                val progress = (total * 100 / fileLength).toInt()
-                                onProgress(progress)
-                            }
-                        }
-
-                        Log.d(TAG, "Download complete: $total bytes written")
+                // 处理重定向
+                if (code in 301..308) {
+                    val location = connection.getHeaderField("Location")
+                    if (location != null) {
+                        currentUrl = location
+                        Log.d(TAG, "Redirect to: $currentUrl")
+                        connection.disconnect()
+                        continue
                     }
                 }
-                return
-            } else {
-                throw Exception("Download failed with HTTP code: $code")
-            }
-        }
 
-        throw Exception("Too many redirects")
+                // 成功响应
+                if (code == HttpURLConnection.HTTP_OK) {
+                    val fileLength = connection.contentLength
+                    Log.d(TAG, "File size: $fileLength bytes")
+
+                    connection.inputStream.use { input ->
+                        FileOutputStream(outputFile).use { output ->
+                            val buffer = ByteArray(8192)
+                            var total = 0L
+                            var bytesRead: Int
+
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                output.write(buffer, 0, bytesRead)
+                                total += bytesRead
+                                if (fileLength > 0) {
+                                    onProgress((total * 100 / fileLength).toInt())
+                                }
+                            }
+
+                            Log.d(TAG, "Downloaded: $total bytes")
+                        }
+                    }
+
+                    // 验证文件
+                    if (outputFile.length() > 0) {
+                        Log.d(TAG, "Download success: ${outputFile.absolutePath}")
+                        return
+                    } else {
+                        throw Exception("Downloaded file is empty")
+                    }
+                } else {
+                    throw Exception("HTTP error: $code")
+                }
+            }
+
+            throw Exception("Too many redirects")
+        } catch (e: Exception) {
+            Log.e(TAG, "Download failed", e)
+            // 清理失败的文件
+            if (outputFile.exists()) outputFile.delete()
+            throw e
+        } finally {
+            connection?.disconnect()
+        }
     }
 
     /**
      * 安装 APK
      */
     fun installApk(context: Context, apkFile: File) {
-        Log.d(TAG, "Installing APK: ${apkFile.absolutePath}")
+        Log.d(TAG, "Installing: ${apkFile.absolutePath}")
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -265,8 +246,6 @@ object UpdateChecker {
             } else {
                 Uri.fromFile(apkFile)
             }
-
-            Log.d(TAG, "APK URI: $uri")
 
             setDataAndType(uri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
