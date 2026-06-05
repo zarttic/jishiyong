@@ -9,6 +9,8 @@ import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
 import com.jishiyong.data.repository.ExpiryStatus
 import com.jishiyong.data.repository.ItemRepository
+import com.jishiyong.update.AppUpdateChecker
+import com.jishiyong.update.UpdateCheckState
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -16,6 +18,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ItemRepository =
         (application as JiShiYongApp).repository
+    private val updateChecker = AppUpdateChecker()
+    private var hasCheckedForUpdates = false
 
     // ======================== UI 状态 ========================
 
@@ -27,6 +31,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _showAddDialog = MutableStateFlow(false)
     val showAddDialog: StateFlow<Boolean> = _showAddDialog.asStateFlow()
+
+    private val _updateCheckState = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
+    val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
 
     // ======================== 数据流 ========================
 
@@ -67,6 +74,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun checkForUpdates(manual: Boolean = false) {
+        if (_updateCheckState.value is UpdateCheckState.Checking) return
+        if (!manual && hasCheckedForUpdates) return
+
+        if (!manual) {
+            hasCheckedForUpdates = true
+        }
+
+        viewModelScope.launch {
+            _updateCheckState.value = UpdateCheckState.Checking
+            _updateCheckState.value = try {
+                val update = updateChecker.checkLatestRelease()
+                when {
+                    update != null -> UpdateCheckState.Available(update)
+                    manual -> UpdateCheckState.UpToDate
+                    else -> UpdateCheckState.Idle
+                }
+            } catch (_: Exception) {
+                if (manual) {
+                    UpdateCheckState.Error("检查更新失败，请稍后再试")
+                } else {
+                    UpdateCheckState.Idle
+                }
+            }
+        }
+    }
+
+    fun dismissUpdateCheckState() {
+        _updateCheckState.value = UpdateCheckState.Idle
     }
 
     fun showAddDialog() {
