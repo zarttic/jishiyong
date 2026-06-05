@@ -78,11 +78,12 @@ object UpdateChecker {
                 readTimeout = 15000
             }
 
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = inputStream.bufferedReader().readText()
+            val code = connection.responseCode
+            if (code == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().readText()
                 parseReleaseResponse(response, currentVersionCode)
             } else {
-                Log.e(TAG, "API request failed: $responseCode")
+                Log.e(TAG, "API request failed: $code")
                 null
             }
         } catch (e: Exception) {
