@@ -1,33 +1,63 @@
 package com.jishiyong.ui.screens
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
-import com.jishiyong.ui.components.GradientButton
-import com.jishiyong.ui.theme.*
+import com.jishiyong.ui.components.categoryColor
+import com.jishiyong.ui.components.categoryIcon
 import com.jishiyong.util.Constants
 import com.jishiyong.util.DateUtils
 import java.time.LocalDate
@@ -47,280 +77,273 @@ fun AddItemScreen(
     var note by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("1") }
     var reminderDaysText by remember { mutableStateOf("7,3,1") }
-    var showCategoryMenu by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "新增物品",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "记录保质期与提醒",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onCancel) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
         Column(
             modifier = modifier
                 .fillMaxSize()
+                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 顶部区域
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(60.dp))
-
-                    // 标题栏
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = onCancel,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = "添加物品",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-            }
-
-            // 表单内容
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // 物品名称
-                ModernTextField(
+            FormSection(title = "基础信息") {
+                OutlinedTextField(
                     value = name,
                     onValueChange = {
                         name = it
                         nameError = false
                     },
-                    label = "物品名称",
-                    placeholder = "例如：牛奶、洗面奶",
+                    label = { Text("物品名称") },
+                    placeholder = { Text("例如：牛奶、洗面奶") },
                     isError = nameError,
-                    errorMessage = "请输入物品名称",
-                    leadingIcon = Icons.Rounded.Inventory2
-                )
-
-                // 分类选择
-                Box {
-                    ModernTextField(
-                        value = "${category.icon} ${category.displayName}",
-                        onValueChange = {},
-                        label = "分类",
-                        readOnly = true,
-                        leadingIcon = Icons.Rounded.Category,
-                        trailingIcon = {
-                            IconButton(onClick = { showCategoryMenu = true }) {
-                                Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
-                            }
+                    supportingText = {
+                        if (nameError) {
+                            Text("请输入物品名称")
                         }
-                    )
-                    DropdownMenu(
-                        expanded = showCategoryMenu,
-                        onDismissRequest = { showCategoryMenu = false }
-                    ) {
-                        ItemCategory.entries.forEach { cat ->
-                            DropdownMenuItem(
-                                text = { Text("${cat.icon} ${cat.displayName}") },
-                                onClick = {
-                                    category = cat
-                                    showCategoryMenu = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // 日期选择
-                Row(
+                    },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ModernDateField(
-                        label = "购买日期",
-                        date = purchaseDate,
-                        onDateSelected = { purchaseDate = it },
-                        modifier = Modifier.weight(1f)
+                    leadingIcon = {
+                        Icon(Icons.Default.Inventory2, contentDescription = null)
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = fieldColors()
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "分类",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    ModernDateField(
-                        label = "过期日期",
-                        date = expirationDate,
-                        onDateSelected = { expirationDate = it },
-                        modifier = Modifier.weight(1f)
+                    CategoryPicker(
+                        selectedCategory = category,
+                        onCategorySelected = { category = it }
                     )
                 }
 
-                // 数量
-                ModernTextField(
+                OutlinedTextField(
                     value = quantity,
-                    onValueChange = { if (it.all { c -> c.isDigit() }) quantity = it },
-                    label = "数量",
+                    onValueChange = { text: String ->
+                        if (text.all { it.isDigit() }) quantity = text
+                    },
+                    label = { Text("数量") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    leadingIcon = Icons.Rounded.Numbers
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = {
+                        Icon(Icons.Default.Numbers, contentDescription = null)
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = fieldColors()
                 )
+            }
 
-                // 备注
-                ModernTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = "备注",
-                    placeholder = "可选，添加备注信息",
-                    minLines = 2,
-                    maxLines = 4,
-                    leadingIcon = Icons.AutoMirrored.Filled.Notes
+            FormSection(title = "日期") {
+                DateField(
+                    label = "购买日期",
+                    date = purchaseDate,
+                    onDateSelected = { purchaseDate = it }
                 )
+                DateField(
+                    label = "到期日期",
+                    date = expirationDate,
+                    onDateSelected = { expirationDate = it }
+                )
+            }
 
-                // 提醒设置
-                ModernTextField(
+            FormSection(title = "提醒与备注") {
+                OutlinedTextField(
                     value = reminderDaysText,
                     onValueChange = { reminderDaysText = it },
-                    label = "提前提醒天数",
-                    placeholder = "用逗号分隔，如：7,3,1",
-                    supportingText = "将在过期前这些天数发送提醒通知",
-                    leadingIcon = Icons.Rounded.Notifications
+                    label = { Text("提前提醒天数") },
+                    placeholder = { Text("7,3,1") },
+                    supportingText = {
+                        Text("用逗号分隔，例如 7,3,1")
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = {
+                        Icon(Icons.Default.Notifications, contentDescription = null)
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = fieldColors()
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("备注") },
+                    placeholder = { Text("可选，记录开封、存放位置等") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4,
+                    leadingIcon = {
+                        Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null)
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = fieldColors()
+                )
+            }
 
-                // 保存按钮
-                GradientButton(
-                    text = "保存物品",
-                    onClick = {
-                        if (name.isBlank()) {
-                            nameError = true
-                            return@GradientButton
-                        }
+            Button(
+                onClick = {
+                    if (name.isBlank()) {
+                        nameError = true
+                        return@Button
+                    }
 
-                        val reminderDays = reminderDaysText
-                            .split(",")
-                            .mapNotNull { it.trim().toIntOrNull() }
-                            .filter { it > 0 }
-                            .sorted()
-                            .ifEmpty { Constants.DEFAULT_REMINDER_DAYS }
+                    val reminderDays = reminderDaysText
+                        .split(",")
+                        .mapNotNull { it.trim().toIntOrNull() }
+                        .filter { it > 0 }
+                        .sorted()
+                        .ifEmpty { Constants.DEFAULT_REMINDER_DAYS }
 
-                        val item = Item(
+                    onSave(
+                        Item(
                             name = name.trim(),
                             category = category,
                             purchaseDate = purchaseDate,
                             expirationDate = expirationDate,
                             note = note.trim(),
-                            quantity = quantity.toIntOrNull() ?: 1,
+                            quantity = quantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
                             reminderDays = reminderDays
                         )
-                        onSave(item)
-                    },
-                    icon = Icons.Rounded.Save
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Default.Save, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "保存物品",
+                    style = MaterialTheme.typography.titleMedium
                 )
+            }
 
-                Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun FormSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun CategoryPicker(
+    selectedCategory: ItemCategory,
+    onCategorySelected: (ItemCategory) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(end = 4.dp)
+    ) {
+        items(ItemCategory.entries.toList()) { category ->
+            val selected = selectedCategory == category
+            val categoryColor = category.categoryColor()
+            Surface(
+                modifier = Modifier
+                    .width(88.dp)
+                    .clickable { onCategorySelected(category) },
+                shape = RoundedCornerShape(8.dp),
+                color = if (selected) categoryColor else categoryColor.copy(alpha = 0.1f),
+                tonalElevation = 0.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = category.categoryIcon(),
+                        contentDescription = null,
+                        tint = if (selected) Color.White else categoryColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        text = category.displayName,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ModernTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    placeholder: String = "",
-    isError: Boolean = false,
-    errorMessage: String? = null,
-    readOnly: Boolean = false,
-    singleLine: Boolean = true,
-    minLines: Int = 1,
-    maxLines: Int = 1,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    leadingIcon: ImageVector? = null,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    supportingText: String? = null
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = if (placeholder.isNotEmpty()) {
-            { Text(placeholder) }
-        } else null,
-        isError = isError,
-        readOnly = readOnly,
-        singleLine = singleLine,
-        minLines = minLines,
-        maxLines = maxLines,
-        keyboardOptions = keyboardOptions,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            errorBorderColor = MaterialTheme.colorScheme.error
-        ),
-        leadingIcon = if (leadingIcon != null) {
-            {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    tint = if (isError) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else null,
-        trailingIcon = trailingIcon,
-        supportingText = if (isError && errorMessage != null) {
-            { Text(errorMessage, color = MaterialTheme.colorScheme.error) }
-        } else if (supportingText != null) {
-            { Text(supportingText) }
-        } else null
-    )
-}
-
-@Composable
-private fun ModernDateField(
+private fun DateField(
     label: String,
     date: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
-    modifier: Modifier = Modifier
+    onDateSelected: (LocalDate) -> Unit
 ) {
     val context = LocalContext.current
 
-    ModernTextField(
-        value = DateUtils.formatShort(date),
+    OutlinedTextField(
+        value = DateUtils.formatChinese(date),
         onValueChange = {},
-        label = label,
+        label = { Text(label) },
         readOnly = true,
-        modifier = modifier,
-        leadingIcon = Icons.Rounded.CalendarMonth,
+        modifier = Modifier.fillMaxWidth(),
+        leadingIcon = {
+            Icon(Icons.Default.CalendarMonth, contentDescription = null)
+        },
         trailingIcon = {
             IconButton(onClick = {
                 val calendar = Calendar.getInstance()
@@ -335,8 +358,18 @@ private fun ModernDateField(
                     calendar.get(Calendar.DAY_OF_MONTH)
                 ).show()
             }) {
-                Icon(Icons.Rounded.EditCalendar, contentDescription = "选择日期")
+                Icon(Icons.Default.EditCalendar, contentDescription = "选择日期")
             }
-        }
+        },
+        shape = RoundedCornerShape(8.dp),
+        colors = fieldColors()
     )
 }
+
+@Composable
+private fun fieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.surface,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+)

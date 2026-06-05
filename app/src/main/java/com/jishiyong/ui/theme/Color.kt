@@ -1,85 +1,36 @@
 package com.jishiyong.ui.theme
 
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// ==================== 主色调 - 渐变绿 ====================
-val Primary = Color(0xFF00C853)
-val PrimaryVariant = Color(0xFF00E676)
-val PrimaryDark = Color(0xFF00A844)
-val OnPrimary = Color(0xFFFFFFFF)
+val BrandPrimary = Color(0xFF12695B)
+val BrandPrimaryDark = Color(0xFF88D5C3)
+val BrandAccent = Color(0xFFE1A32A)
+val BrandAccentSoft = Color(0xFFFFF0CC)
 
-// 深色主题主色
-val PrimaryDarkTheme = Color(0xFF69F0AE)
-val PrimaryVariantDark = Color(0xFFB9F6CA)
+val Ink = Color(0xFF17201D)
+val InkMuted = Color(0xFF53615D)
+val Paper = Color(0xFFF6F7F2)
+val SurfaceClean = Color(0xFFFFFFFF)
+val SurfaceRaised = Color(0xFFEAF3EF)
+val OutlineSoft = Color(0xFFD9E0DC)
 
-// ==================== 表面和背景 ====================
-val SurfaceLight = Color(0xFFFAFAFA)
-val SurfaceDark = Color(0xFF121212)
-val SurfaceVariantLight = Color(0xFFF5F5F5)
-val SurfaceVariantDark = Color(0xFF1E1E1E)
+val DarkInk = Color(0xFFE8EEEA)
+val DarkMuted = Color(0xFFBAC7C1)
+val DarkPaper = Color(0xFF101815)
+val DarkSurface = Color(0xFF19231F)
+val DarkSurfaceRaised = Color(0xFF21302B)
 
-val BackgroundLight = Color(0xFFFFFFFF)
-val BackgroundDark = Color(0xFF0A0A0A)
+val StatusFresh = Color(0xFF1F8F64)
+val StatusWarning = Color(0xFFD48A00)
+val StatusUrgent = Color(0xFFE25B2A)
+val StatusCritical = Color(0xFFC6352D)
+val StatusExpired = Color(0xFF7C8581)
 
-val CardLight = Color(0xFFFFFFFF)
-val CardDark = Color(0xFF1A1A1A)
-
-// ==================== 状态颜色 - 更鲜艳 ====================
-val StatusFresh = Color(0xFF4CAF50)
-val StatusFreshLight = Color(0xFFE8F5E9)
-val StatusWarning = Color(0xFFFF9800)
-val StatusWarningLight = Color(0xFFFFF3E0)
-val StatusUrgent = Color(0xFFFF5722)
-val StatusUrgentLight = Color(0xFFFBE9E7)
-val StatusCritical = Color(0xFFF44336)
-val StatusCriticalLight = Color(0xFFFFEBEE)
-val StatusExpired = Color(0xFF9E9E9E)
-val StatusExpiredLight = Color(0xFFF5F5F5)
-
-// ==================== 渐变色 ====================
-val GradientPrimary = Brush.linearGradient(
-    colors = listOf(Color(0xFF00C853), Color(0xFF00E676))
-)
-
-val GradientPrimaryDark = Brush.linearGradient(
-    colors = listOf(Color(0xFF00A844), Color(0xFF00C853))
-)
-
-val GradientSunset = Brush.linearGradient(
-    colors = listOf(Color(0xFFFF6B6B), Color(0xFFFFE66D))
-)
-
-val GradientOcean = Brush.linearGradient(
-    colors = listOf(Color(0xFF667eea), Color(0xFF764ba2))
-)
-
-val GradientForest = Brush.linearGradient(
-    colors = listOf(Color(0xFF11998e), Color(0xFF38ef7d))
-)
-
-val GradientCard = Brush.linearGradient(
-    colors = listOf(Color(0xFFFFFFFF), Color(0xFFF8FFF8))
-)
-
-val GradientCardDark = Brush.linearGradient(
-    colors = listOf(Color(0xFF1A1A1A), Color(0xFF2A2A2A))
-)
-
-// ==================== 分类颜色 - 更现代 ====================
-val CategoryFood = Color(0xFFFF6B6B)
-val CategoryDrink = Color(0xFF4ECDC4)
-val CategoryDaily = Color(0xFF95E1D3)
-val CategoryMedicine = Color(0xFFF38181)
-val CategoryCosmetics = Color(0xFFAA96DA)
-val CategoryElectronics = Color(0xFF6C5CE7)
-val CategoryClothing = Color(0xFFFFA07A)
-val CategoryOther = Color(0xFF95A5A6)
-
-// ==================== 文字颜色 ====================
-val TextPrimary = Color(0xFF1A1A1A)
-val TextSecondary = Color(0xFF666666)
-val TextTertiary = Color(0xFF999999)
-val TextPrimaryDark = Color(0xFFEEEEEE)
-val TextSecondaryDark = Color(0xFFAAAAAA)
-val TextTertiaryDark = Color(0xFF777777)
+val CategoryFood = Color(0xFFD85C2A)
+val CategoryDrink = Color(0xFF2F73C8)
+val CategoryDaily = Color(0xFF6C7A89)
+val CategoryMedicine = Color(0xFFC43D63)
+val CategoryCosmetics = Color(0xFF9C5BB5)
+val CategoryElectronics = Color(0xFF4C63B6)
+val CategoryClothing = Color(0xFF1C8C84)
+val CategoryOther = Color(0xFF6F7D72)

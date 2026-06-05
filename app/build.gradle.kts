@@ -4,6 +4,19 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val appVersionCode = (findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 1
+val appVersionName = (findProperty("VERSION_NAME") as String?) ?: "1.0.0"
+val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+val releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.jishiyong"
     compileSdk = 34
@@ -12,8 +25,10 @@ android {
         applicationId = "com.jishiyong"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
+
+        buildConfigField("String", "GITHUB_REPOSITORY_NAME", "\"zarttic/jishiyong\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -25,9 +40,23 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -46,6 +75,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -92,9 +122,6 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
-
-    // Google Fonts
-    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.0")
 
     // Gson (for Room type converters)
     implementation("com.google.code.gson:gson:2.10.1")

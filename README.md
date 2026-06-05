@@ -27,6 +27,11 @@
 - 按分类筛选
 - 快速查看即将过期物品
 
+### ⬇️ 版本更新
+- 从 GitHub Release 检查最新版本
+- 发现新版本后跳转到 GitHub 下载 APK
+- 不做静默安装，不在应用内保存签名密钥或 GitHub Token
+
 ## 🏗️ 技术栈
 
 | 技术 | 用途 |
@@ -112,6 +117,34 @@ app/src/main/java/com/jishiyong/
 # Release 版本（需要签名配置）
 ./gradlew assembleRelease
 ```
+
+### GitHub Release 分发
+
+项目提供 `.github/workflows/release.yml`，用于手动发布签名 APK 到 GitHub Release。
+
+首次使用前，在 GitHub 仓库的 `Settings → Secrets and variables → Actions` 中配置：
+
+- `ANDROID_KEYSTORE_BASE64`：release keystore 文件的 base64 内容
+- `ANDROID_KEYSTORE_PASSWORD`：keystore 密码
+- `ANDROID_KEY_ALIAS`：签名 key alias
+- `ANDROID_KEY_PASSWORD`：签名 key 密码
+
+生成 keystore base64：
+
+```bash
+base64 -w 0 release.keystore
+```
+
+发布新版本：
+
+1. 打开 GitHub Actions
+2. 选择 `Release Android APK`
+3. 点击 `Run workflow`
+4. 输入 `version_name`，例如 `1.0.1`
+5. 输入递增的 `version_code`，例如 `2`
+6. 可选填写 release notes
+
+发布完成后，App 会通过 GitHub latest release API 检查最新版本。发现新版本时只打开 APK 下载链接，由浏览器和系统安装界面处理安装确认。
 
 ## 📱 使用指南
 
