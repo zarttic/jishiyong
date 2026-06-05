@@ -1,5 +1,14 @@
 package com.jishiyong.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Tune
@@ -35,6 +45,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,16 +54,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.jishiyong.agent.InventoryAction
+import com.jishiyong.agent.VoiceInputState
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.repository.ExpiryStatus
 import com.jishiyong.update.UpdateCheckState
 import com.jishiyong.ui.components.CategoryFilterChips
 import com.jishiyong.ui.components.ExpiryOverviewCard
 import com.jishiyong.ui.components.ItemCard
+import com.jishiyong.util.DateUtils
 import com.jishiyong.viewmodel.MainViewModel
 
 @Composable
@@ -70,9 +86,115 @@ fun HomeScreen(
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val updateCheckState by viewModel.updateCheckState.collectAsState()
+    val voiceInputState by viewModel.voiceInputState.collectAsState()
+    val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
 
     var showDeleteDialog by remember { mutableStateOf<Item?>(null) }
+    val ignoreNextSpeechError = remember { mutableStateOf(false) }
+    val speechRecognizer = remember(context) {
+        if (SpeechRecognizer.isRecognitionAvailable(context)) {
+            SpeechRecognizer.createSpeechRecognizer(context)
+        } else {
+            null
+        }
+    }
+
+    DisposableEffect(speechRecognizer) {
+        speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                viewModel.startVoiceInput()
+            }
+
+            override fun onBeginningOfSpeech() {
+                viewModel.startVoiceInput()
+            }
+
+            override fun onRmsChanged(rmsdB: Float) = Unit
+            override fun onBufferReceived(buffer: ByteArray?) = Unit
+
+            override fun onEndOfSpeech() {
+                viewModel.markVoiceRecognizing()
+            }
+
+            override fun onError(error: Int) {
+                if (ignoreNextSpeechError.value) {
+                    ignoreNextSpeechError.value = false
+                    viewModel.cancelVoiceInput()
+                    return
+                }
+                viewModel.failVoiceInput(speechErrorText(error))
+            }
+
+            override fun onResults(results: Bundle?) {
+                val text = results
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull()
+                    .orEmpty()
+                viewModel.handleVoiceText(text)
+            }
+
+            override fun onPartialResults(partialResults: Bundle?) = Unit
+            override fun onEvent(eventType: Int, params: Bundle?) = Unit
+        })
+
+        onDispose {
+            speechRecognizer?.destroy()
+        }
+    }
+
+    val startVoiceRecognition = {
+        if (speechRecognizer == null) {
+            viewModel.failVoiceInput("当前设备不支持系统语音识别")
+        } else {
+            ignoreNextSpeechError.value = false
+            viewModel.startVoiceInput()
+            try {
+                speechRecognizer.cancel()
+                speechRecognizer.startListening(
+                    Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(
+                            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                        )
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")
+                        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, "请说出库存操作")
+                    }
+                )
+            } catch (_: Exception) {
+                viewModel.failVoiceInput("启动语音识别失败，请稍后再试")
+            }
+        }
+    }
+
+    val recordAudioLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            startVoiceRecognition()
+        } else {
+            viewModel.failVoiceInput("需要录音权限才能使用语音库存操作")
+        }
+    }
+
+    val onVoiceClick = {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            startVoiceRecognition()
+        } else {
+            recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    val cancelVoiceRecognition = {
+        ignoreNextSpeechError.value = true
+        speechRecognizer?.cancel()
+        viewModel.cancelVoiceInput()
+    }
 
     LaunchedEffect(Unit) {
         viewModel.checkForUpdates()
@@ -115,6 +237,8 @@ fun HomeScreen(
                     onSearchChange = viewModel::setSearchQuery,
                     updateCheckState = updateCheckState,
                     onCheckUpdates = { viewModel.checkForUpdates(manual = true) },
+                    voiceInputState = voiceInputState,
+                    onVoiceClick = onVoiceClick,
                     onStatsClick = onStatsClick
                 )
             }
@@ -245,6 +369,14 @@ fun HomeScreen(
         UpdateCheckState.Checking,
         UpdateCheckState.Idle -> Unit
     }
+
+    VoiceInputDialog(
+        voiceInputState = voiceInputState,
+        onConfirm = viewModel::confirmVoiceAction,
+        onCancel = cancelVoiceRecognition,
+        onDismiss = viewModel::cancelVoiceInput,
+        onCandidateSelected = viewModel::selectVoiceCandidate
+    )
 }
 
 @Composable
@@ -254,6 +386,8 @@ private fun HomeHeader(
     onSearchChange: (String) -> Unit,
     updateCheckState: UpdateCheckState,
     onCheckUpdates: () -> Unit,
+    voiceInputState: VoiceInputState,
+    onVoiceClick: () -> Unit,
     onStatsClick: () -> Unit
 ) {
     Column(
@@ -320,32 +454,248 @@ private fun HomeHeader(
             }
         }
 
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchChange,
-            placeholder = { Text("搜索名称、备注") },
-            singleLine = true,
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = null
-                )
-            },
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Tune,
-                    contentDescription = null
-                )
-            },
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchChange,
+                placeholder = { Text("搜索名称、备注") },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null
+                    )
+                },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = null
+                    )
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                )
             )
-        )
+
+            val voiceBusy = voiceInputState is VoiceInputState.Listening ||
+                    voiceInputState is VoiceInputState.Recognizing ||
+                    voiceInputState is VoiceInputState.Parsing
+            Surface(
+                modifier = Modifier.size(56.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primary
+            ) {
+                IconButton(
+                    onClick = onVoiceClick,
+                    enabled = !voiceBusy
+                ) {
+                    if (voiceBusy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "语音库存操作",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoiceInputDialog(
+    voiceInputState: VoiceInputState,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit,
+    onCandidateSelected: (Item) -> Unit
+) {
+    when (voiceInputState) {
+        VoiceInputState.Idle -> Unit
+        VoiceInputState.Listening,
+        VoiceInputState.Recognizing,
+        is VoiceInputState.Parsing -> {
+            AlertDialog(
+                onDismissRequest = onCancel,
+                title = { Text(voiceStateTitle(voiceInputState)) },
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        Text(voiceStateMessage(voiceInputState))
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onCancel) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
+        is VoiceInputState.PendingConfirmation -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("确认语音操作") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "识别文本：${voiceInputState.recognizedText}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "将执行：\n${voiceActionPreview(voiceInputState.action, voiceInputState.matchedItem)}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onConfirm) {
+                        Text("确认执行")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDismiss) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
+        is VoiceInputState.NeedsSelection -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("选择库存") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(voiceInputState.message)
+                        Text(
+                            text = "识别文本：${voiceInputState.recognizedText}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        voiceInputState.candidates.forEach { item ->
+                            TextButton(
+                                onClick = { onCandidateSelected(item) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "${item.name} · 剩余 ${(item.quantity - item.usedQuantity).coerceAtLeast(0)} · ${DateUtils.formatShort(item.expirationDate)}过期",
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = onDismiss) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
+        is VoiceInputState.Success -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("操作完成") },
+                text = { Text(voiceInputState.message) },
+                confirmButton = {
+                    TextButton(onClick = onDismiss) {
+                        Text("知道了")
+                    }
+                }
+            )
+        }
+        is VoiceInputState.Error -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("语音操作失败") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        voiceInputState.recognizedText?.let {
+                            Text(
+                                text = "识别文本：$it",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(voiceInputState.message)
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onDismiss) {
+                        Text("知道了")
+                    }
+                }
+            )
+        }
+    }
+}
+
+private fun voiceStateTitle(state: VoiceInputState): String {
+    return when (state) {
+        VoiceInputState.Listening -> "待说话"
+        VoiceInputState.Recognizing -> "识别中"
+        is VoiceInputState.Parsing -> "解析中"
+        else -> ""
+    }
+}
+
+private fun voiceStateMessage(state: VoiceInputState): String {
+    return when (state) {
+        VoiceInputState.Listening -> "请说出要新增、消耗或丢弃的库存"
+        VoiceInputState.Recognizing -> "正在识别语音内容"
+        is VoiceInputState.Parsing -> "正在解析：${state.recognizedText}"
+        else -> ""
+    }
+}
+
+private fun voiceActionPreview(action: InventoryAction, matchedItem: Item?): String {
+    return when (action) {
+        is InventoryAction.AddItem -> {
+            val draft = action.draft
+            "新增 ${draft.name} x${draft.quantity}\n分类：${draft.category.displayName}\n购买：${DateUtils.formatChinese(draft.purchaseDate)}\n过期：${DateUtils.formatChinese(draft.expirationDate)}"
+        }
+        is InventoryAction.ConsumeItem -> {
+            val itemName = matchedItem?.name ?: action.itemName
+            "消耗 $itemName x${action.quantity}"
+        }
+        is InventoryAction.DiscardItem -> {
+            val itemName = matchedItem?.name ?: action.itemName
+            "丢弃 $itemName x${action.quantity}"
+        }
+        is InventoryAction.AskClarification -> action.message
+    }
+}
+
+private fun speechErrorText(error: Int): String {
+    return when (error) {
+        SpeechRecognizer.ERROR_AUDIO -> "录音失败，请重试"
+        SpeechRecognizer.ERROR_CLIENT -> "语音识别已取消"
+        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "缺少录音权限"
+        SpeechRecognizer.ERROR_NETWORK,
+        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "语音识别网络异常，请稍后再试"
+        SpeechRecognizer.ERROR_NO_MATCH -> "没有识别到可用语音内容，请重试"
+        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "语音识别服务正忙，请稍后再试"
+        SpeechRecognizer.ERROR_SERVER -> "语音识别服务异常，请稍后再试"
+        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "没有听到语音，请重试"
+        else -> "语音识别失败，请重试"
     }
 }
 

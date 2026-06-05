@@ -4,6 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jishiyong.JiShiYongApp
+import com.jishiyong.agent.InventoryActionExecutor
+import com.jishiyong.agent.InventoryActionStore
+import com.jishiyong.agent.InventoryAgent
+import com.jishiyong.agent.VoiceInputState
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
@@ -19,6 +23,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: ItemRepository =
         (application as JiShiYongApp).repository
     private val updateChecker = AppUpdateChecker()
+    private val inventoryAgent = InventoryAgent()
+    private val actionExecutor = InventoryActionExecutor()
+    private val actionStore = object : InventoryActionStore {
+        override suspend fun insert(item: Item): Long = repository.insert(item)
+        override suspend fun getItemById(id: Long): Item? = repository.getItemById(id)
+        override suspend fun markAsConsumed(id: Long, type: ConsumeType) {
+            repository.markAsConsumed(id, type)
+        }
+
+        override suspend fun updateUsedQuantity(id: Long, quantity: Int) {
+            repository.updateUsedQuantity(id, quantity)
+        }
+    }
     private var hasCheckedForUpdates = false
 
     // ======================== UI 状态 ========================
@@ -35,11 +52,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _updateCheckState = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
     val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
 
+    private val _voiceInputState = MutableStateFlow<VoiceInputState>(VoiceInputState.Idle)
+    val voiceInputState: StateFlow<VoiceInputState> = _voiceInputState.asStateFlow()
+
     // ======================== 数据流 ========================
+
+    private val allActiveItems: StateFlow<List<Item>> = repository.getActiveItems()
+        .catch { emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** 活跃物品列表 */
     val activeItems: StateFlow<List<Item>> = combine(
-        repository.getActiveItems(),
+        allActiveItems,
         _selectedCategory,
         _searchQuery
     ) { items, category, query ->
@@ -111,6 +135,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissUpdateCheckState() {
         _updateCheckState.value = UpdateCheckState.Idle
+    }
+
+    fun startVoiceInput() {
+        _voiceInputState.value = VoiceInputState.Listening
+    }
+
+    fun markVoiceRecognizing() {
+        _voiceInputState.value = VoiceInputState.Recognizing
+    }
+
+    fun handleVoiceText(recognizedText: String) {
+        val text = recognizedText.trim()
+        if (text.isBlank()) {
+            _voiceInputState.value = VoiceInputState.Error("没有识别到语音内容，请重试")
+            return
+        }
+
+        _voiceInputState.value = VoiceInputState.Parsing(text)
+        viewModelScope.launch {
+            _voiceInputState.value = inventoryAgent.preview(text, allActiveItems.value)
+        }
+    }
+
+    fun failVoiceInput(message: String, recognizedText: String? = null) {
+        _voiceInputState.value = VoiceInputState.Error(message, recognizedText)
+    }
+
+    fun cancelVoiceInput() {
+        _voiceInputState.value = VoiceInputState.Idle
+    }
+
+    fun selectVoiceCandidate(item: Item) {
+        val currentState = _voiceInputState.value as? VoiceInputState.NeedsSelection ?: return
+        if (currentState.candidates.none { it.id == item.id }) return
+
+        _voiceInputState.value = VoiceInputState.PendingConfirmation(
+            recognizedText = currentState.recognizedText,
+            action = currentState.action,
+            matchedItem = item
+        )
+    }
+
+    fun confirmVoiceAction() {
+        val pending = _voiceInputState.value as? VoiceInputState.PendingConfirmation ?: return
+        viewModelScope.launch {
+            _voiceInputState.value = try {
+                actionExecutor.execute(pending, actionStore)
+            } catch (_: Exception) {
+                VoiceInputState.Error("语音操作执行失败，请稍后再试", pending.recognizedText)
+            }
+        }
     }
 
     fun showAddDialog() {
