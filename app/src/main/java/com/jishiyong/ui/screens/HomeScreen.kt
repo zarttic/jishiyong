@@ -1,6 +1,7 @@
 package com.jishiyong.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -55,6 +56,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,6 +77,7 @@ import com.jishiyong.agent.VoiceInputState
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.repository.ExpiryStatus
+import com.jishiyong.speech.BaiduCloudSpeechRecognizer
 import com.jishiyong.ui.components.AssistantFace
 import com.jishiyong.ui.components.AssistantNote
 import com.jishiyong.ui.components.CategoryFilterChips
@@ -103,6 +106,9 @@ import com.jishiyong.ui.theme.SurfaceSoft
 import com.jishiyong.update.UpdateCheckState
 import com.jishiyong.util.DateUtils
 import com.jishiyong.viewmodel.MainViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,16 +129,24 @@ fun HomeScreen(
     val voiceInputState by viewModel.voiceInputState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val coroutineScope = rememberCoroutineScope()
 
     var showDeleteDialog by remember { mutableStateOf<Item?>(null) }
     var showConsumeMenuFor by remember { mutableStateOf<Item?>(null) }
+    var cloudSpeechJob by remember { mutableStateOf<Job?>(null) }
     val ignoreNextSpeechError = remember { mutableStateOf(false) }
+    val baiduCloudSpeechRecognizer = remember(context) {
+        BaiduCloudSpeechRecognizer(context)
+    }
     val speechRecognizer = remember(context) {
         if (SpeechRecognizer.isRecognitionAvailable(context)) {
             SpeechRecognizer.createSpeechRecognizer(context)
         } else {
             null
         }
+    }
+    val externalSpeechRecognizerAvailable = remember(context) {
+        buildSpeechRecognitionIntent().resolveActivity(context.packageManager) != null
     }
 
     DisposableEffect(speechRecognizer) {
@@ -178,27 +192,67 @@ fun HomeScreen(
         }
     }
 
+    val speechRecognitionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val text = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                .orEmpty()
+            viewModel.handleVoiceText(text)
+        } else {
+            viewModel.failVoiceInput("没有识别到可用语音内容，请重试")
+        }
+    }
+
+    val startBaiduCloudVoiceRecognition = {
+        if (!baiduCloudSpeechRecognizer.isConfigured()) {
+            viewModel.failVoiceInput("当前设备没有可用的系统语音识别，且未配置百度云语音识别")
+        } else {
+            viewModel.startVoiceInput()
+            cloudSpeechJob?.cancel()
+            cloudSpeechJob = coroutineScope.launch {
+                val text = try {
+                    baiduCloudSpeechRecognizer.recognizeOnce(
+                        onRecordingFinished = { viewModel.markVoiceRecognizing() }
+                    )
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (_: Exception) {
+                    viewModel.failVoiceInput("百度云语音识别失败，请稍后再试")
+                    return@launch
+                }
+                viewModel.handleVoiceText(text)
+                cloudSpeechJob = null
+            }
+        }
+    }
+
+    val startExternalVoiceRecognition = {
+        if (!externalSpeechRecognizerAvailable) {
+            startBaiduCloudVoiceRecognition()
+        } else {
+            viewModel.startVoiceInput()
+            try {
+                speechRecognitionLauncher.launch(buildSpeechRecognitionIntent())
+            } catch (_: Exception) {
+                startBaiduCloudVoiceRecognition()
+            }
+        }
+    }
+
     val startVoiceRecognition = {
         if (speechRecognizer == null) {
-            viewModel.failVoiceInput("当前设备不支持系统语音识别")
+            startExternalVoiceRecognition()
         } else {
             ignoreNextSpeechError.value = false
             viewModel.startVoiceInput()
             try {
                 speechRecognizer.cancel()
-                speechRecognizer.startListening(
-                    Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                        putExtra(
-                            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                        )
-                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")
-                        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                        putExtra(RecognizerIntent.EXTRA_PROMPT, "请说出库存操作")
-                    }
-                )
+                speechRecognizer.startListening(buildSpeechRecognitionIntent())
             } catch (_: Exception) {
-                viewModel.failVoiceInput("启动语音识别失败，请稍后再试")
+                startExternalVoiceRecognition()
             }
         }
     }
@@ -214,7 +268,9 @@ fun HomeScreen(
     }
 
     val onVoiceClick = {
-        if (ContextCompat.checkSelfPermission(
+        val requiresRecordAudioPermission = speechRecognizer != null ||
+                (!externalSpeechRecognizerAvailable && baiduCloudSpeechRecognizer.isConfigured())
+        if (!requiresRecordAudioPermission || ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.RECORD_AUDIO
             ) == PackageManager.PERMISSION_GRANTED
@@ -226,6 +282,8 @@ fun HomeScreen(
     }
 
     val cancelVoiceRecognition = {
+        cloudSpeechJob?.cancel()
+        cloudSpeechJob = null
         ignoreNextSpeechError.value = true
         speechRecognizer?.cancel()
         viewModel.cancelVoiceInput()
@@ -1277,10 +1335,22 @@ private fun voiceActionPreview(action: InventoryAction, matchedItem: Item?): Str
     }
 }
 
+private fun buildSpeechRecognitionIntent(): Intent {
+    return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        )
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")
+        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        putExtra(RecognizerIntent.EXTRA_PROMPT, "请说出库存操作")
+    }
+}
+
 private fun speechErrorText(error: Int): String {
     return when (error) {
         SpeechRecognizer.ERROR_AUDIO -> "录音失败，请重试"
-        SpeechRecognizer.ERROR_CLIENT -> "语音识别已取消"
+        SpeechRecognizer.ERROR_CLIENT -> "语音识别服务不可用或已取消"
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "缺少录音权限"
         SpeechRecognizer.ERROR_NETWORK,
         SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "语音识别网络异常，请稍后再试"

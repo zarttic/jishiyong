@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.util.Base64
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
@@ -26,10 +27,24 @@ fun String.asBuildConfigString(): String {
     return "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 }
 
+fun String.asObfuscatedBuildConfigString(): String {
+    if (isBlank()) return "\"\""
+    val obfuscated = toByteArray(Charsets.UTF_8)
+        .mapIndexed { index, byte ->
+            (byte.toInt() xor 0x5A xor ((index * 31 + 17) and 0xFF)).toByte()
+        }
+        .toByteArray()
+    return Base64.getEncoder().encodeToString(obfuscated).asBuildConfigString()
+}
+
 val appVersionCode = (findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 1
 val appVersionName = (findProperty("VERSION_NAME") as String?) ?: "1.0.0"
 val aiApiBaseUrl = configValue("AI_API_BASE_URL", "https://api.edgefn.net/v1")
 val aiModelName = configValue("AI_MODEL_NAME", "DeepSeek-V3.2")
+val baiduAsrAppId = configValue("BAIDU_ASR_APP_ID")
+val baiduAsrApiKey = configValue("BAIDU_ASR_API_KEY")
+val baiduAsrSecretKey = configValue("BAIDU_ASR_SECRET_KEY")
+val baiduAsrDevPid = configValue("BAIDU_ASR_DEV_PID", "1537").toIntOrNull() ?: 1537
 val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 val releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
 val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
@@ -55,6 +70,10 @@ android {
         buildConfigField("String", "GITHUB_REPOSITORY_NAME", "\"zarttic/jishiyong\"")
         buildConfigField("String", "AI_API_BASE_URL", aiApiBaseUrl.asBuildConfigString())
         buildConfigField("String", "AI_MODEL_NAME", aiModelName.asBuildConfigString())
+        buildConfigField("String", "BAIDU_ASR_APP_ID", baiduAsrAppId.asBuildConfigString())
+        buildConfigField("String", "BAIDU_ASR_API_KEY_OBFUSCATED", baiduAsrApiKey.asObfuscatedBuildConfigString())
+        buildConfigField("String", "BAIDU_ASR_SECRET_KEY_OBFUSCATED", baiduAsrSecretKey.asObfuscatedBuildConfigString())
+        buildConfigField("int", "BAIDU_ASR_DEV_PID", baiduAsrDevPid.toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

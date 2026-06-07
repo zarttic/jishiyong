@@ -30,6 +30,10 @@ jobs:
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      BAIDU_ASR_APP_ID: ${{ secrets.BAIDU_ASR_APP_ID }}
+      BAIDU_ASR_API_KEY: ${{ secrets.BAIDU_ASR_API_KEY }}
+      BAIDU_ASR_SECRET_KEY: ${{ secrets.BAIDU_ASR_SECRET_KEY }}
+      BAIDU_ASR_DEV_PID: "1537"
 
     steps:
       - name: Checkout code
