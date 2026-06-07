@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jishiyong.agent.InventoryAction
+import com.jishiyong.agent.InventoryPlanningDiagnostic
 import com.jishiyong.agent.VoiceInputState
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.repository.ExpiryStatus
@@ -573,6 +574,7 @@ private fun VoiceInputDialog(
                             text = "将执行：\n${voiceActionPreview(voiceInputState.action, voiceInputState.matchedItem)}",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        PlanningDiagnosticsText(voiceInputState.diagnostics)
                     }
                 },
                 confirmButton = {
@@ -599,6 +601,7 @@ private fun VoiceInputDialog(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        PlanningDiagnosticsText(voiceInputState.diagnostics)
                         LazyColumn(
                             modifier = Modifier.heightIn(max = 280.dp)
                         ) {
@@ -663,6 +666,19 @@ private fun VoiceInputDialog(
             )
         }
     }
+}
+
+@Composable
+private fun PlanningDiagnosticsText(diagnostics: List<InventoryPlanningDiagnostic>) {
+    diagnostics
+        .filter { it.message.isNotBlank() }
+        .forEach { diagnostic ->
+            Text(
+                text = diagnostic.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 }
 
 private fun voiceStateTitle(state: VoiceInputState): String {

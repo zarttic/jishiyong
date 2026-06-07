@@ -208,7 +208,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _voiceInputState.value = VoiceInputState.PendingConfirmation(
             recognizedText = currentState.recognizedText,
             action = currentState.action,
-            matchedItem = item
+            matchedItem = item,
+            diagnostics = currentState.diagnostics
         )
     }
 

@@ -5,10 +5,14 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.jishiyong.data.db.dao.AgentMemoryDao
 import com.jishiyong.data.db.converter.DateConverter
 import com.jishiyong.data.db.converter.ListConverter
 import com.jishiyong.data.db.dao.ItemDao
+import com.jishiyong.data.db.entity.AgentMemoryEntity
+import com.jishiyong.data.db.entity.AgentMemoryFtsEntity
 import com.jishiyong.data.db.entity.Item
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,14 +20,15 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 @Database(
-    entities = [Item::class],
-    version = 1,
+    entities = [Item::class, AgentMemoryEntity::class, AgentMemoryFtsEntity::class],
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(DateConverter::class, ListConverter::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun itemDao(): ItemDao
+    abstract fun agentMemoryDao(): AgentMemoryDao
 
     companion object {
         @Volatile
@@ -36,10 +41,39 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "jishiyong_db"
                 )
+                    .addMigrations(MIGRATION_1_2)
                     .addCallback(DatabaseCallback())
                     .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `agent_memories` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `key` TEXT NOT NULL,
+                        `valueJson` TEXT NOT NULL,
+                        `searchableText` TEXT NOT NULL,
+                        `confidence` REAL NOT NULL,
+                        `hits` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE VIRTUAL TABLE IF NOT EXISTS `agent_memory_fts`
+                    USING FTS4(`searchableText` TEXT NOT NULL)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_agent_memories_type_key` ON `agent_memories` (`type`, `key`)"
+                )
             }
         }
     }

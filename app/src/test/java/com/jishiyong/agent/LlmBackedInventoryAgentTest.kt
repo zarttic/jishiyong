@@ -55,16 +55,18 @@ class LlmBackedInventoryAgentTest {
 
     @Test
     fun hybridPlannerFallsBackWhenLlmRequestFails() = runTest {
+        val logger = RecordingAgentLogger()
         val planner = HybridInventoryActionPlanner(
             primary = LlmInventoryActionPlanner(
                 client = FakeLlmClient(error = IOException("network failed")),
                 promptBuilder = LlmInventoryPromptBuilder(),
                 actionParser = LlmInventoryActionJsonParser()
             ),
-            fallback = RuleBasedInventoryActionPlanner()
+            fallback = RuleBasedInventoryActionPlanner(),
+            logger = logger
         )
 
-        val action = planner.plan(
+        val plan = planner.planWithDiagnostics(
             InventoryAgentRequest(
                 recognizedText = "今天喝了一瓶蒙牛牛奶",
                 activeItems = emptyList(),
@@ -72,8 +74,12 @@ class LlmBackedInventoryAgentTest {
             )
         )
 
+        val action = plan.action
         assertTrue(action is InventoryAction.ConsumeItem)
         assertEquals("蒙牛牛奶", (action as InventoryAction.ConsumeItem).itemName)
+        assertEquals(InventoryPlanningDiagnosticKind.LLM_FALLBACK, plan.diagnostics.single().kind)
+        assertTrue(plan.diagnostics.single().message.contains("本地规则"))
+        assertTrue(logger.warnings.single().contains("LLM inventory planner failed"))
     }
 
     @Test
@@ -180,6 +186,14 @@ class LlmBackedInventoryAgentTest {
             rememberedText = recognizedText
             rememberedAction = action
             rememberedItem = matchedItem
+        }
+    }
+
+    private class RecordingAgentLogger : AgentLogger {
+        val warnings = mutableListOf<String>()
+
+        override fun warn(message: String, throwable: Throwable?) {
+            warnings += message
         }
     }
 }

@@ -1,10 +1,11 @@
 package com.jishiyong.agent
 
-import com.jishiyong.data.db.entity.ItemCategory
 import com.jishiyong.util.Constants
 import java.time.LocalDate
 
-class InventoryCommandParser {
+class InventoryCommandParser(
+    private val categoryInferencer: CategoryInferencer = CategoryInferencer()
+) {
 
     fun parse(text: String, today: LocalDate = LocalDate.now()): InventoryAction {
         val normalized = normalize(text)
@@ -17,20 +18,6 @@ class InventoryCommandParser {
             normalized.containsAny(discardKeywords) -> parseDiscard(normalized)
             normalized.containsAny(consumeKeywords) -> parseConsume(normalized)
             else -> InventoryAction.AskClarification("暂时只能处理新增、消耗或丢弃库存")
-        }
-    }
-
-    fun inferCategory(name: String): ItemCategory {
-        val normalizedName = normalize(name)
-        return when {
-            normalizedName.containsAny(drinkKeywords) -> ItemCategory.DRINK
-            normalizedName.containsAny(medicineKeywords) -> ItemCategory.MEDICINE
-            normalizedName.containsAny(cosmeticsKeywords) -> ItemCategory.COSMETICS
-            normalizedName.containsAny(dailyKeywords) -> ItemCategory.DAILY
-            normalizedName.containsAny(electronicsKeywords) -> ItemCategory.ELECTRONICS
-            normalizedName.containsAny(clothingKeywords) -> ItemCategory.CLOTHING
-            normalizedName.containsAny(foodKeywords) -> ItemCategory.FOOD
-            else -> ItemCategory.OTHER
         }
     }
 
@@ -63,7 +50,7 @@ class InventoryCommandParser {
         return InventoryAction.AddItem(
             ItemDraft(
                 name = name,
-                category = inferCategory(name),
+                category = categoryInferencer.infer(name),
                 quantity = quantity.coerceAtLeast(1),
                 purchaseDate = purchaseDate,
                 expirationDate = expirationDate,
@@ -435,12 +422,5 @@ class InventoryCommandParser {
         private val dayOnlyExpirationRegex = Regex("$numberPattern(?:日|号)(?:过期|到期)")
         private val relativeDayExpirationRegex = Regex("${numberPattern}天后(?:过期|到期)")
 
-        private val drinkKeywords = listOf("奶", "牛奶", "酸奶", "饮料", "茶", "水", "咖啡", "果汁", "可乐", "啤酒", "东方树叶")
-        private val foodKeywords = listOf("饭", "面", "肉", "菜", "蛋", "水果", "面包", "饼干", "零食", "米", "油", "盐", "糖")
-        private val medicineKeywords = listOf("药", "片", "胶囊", "口服液", "感冒", "退烧", "消炎")
-        private val cosmeticsKeywords = listOf("面霜", "口红", "粉底", "精华", "乳液", "防晒", "洗面奶", "化妆")
-        private val dailyKeywords = listOf("纸", "洗衣", "牙膏", "牙刷", "沐浴", "洗发", "肥皂", "清洁")
-        private val electronicsKeywords = listOf("电池", "充电", "耳机", "数据线", "手机")
-        private val clothingKeywords = listOf("衣", "裤", "袜", "鞋", "帽")
     }
 }

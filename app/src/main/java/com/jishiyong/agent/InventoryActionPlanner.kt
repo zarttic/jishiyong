@@ -3,34 +3,58 @@ package com.jishiyong.agent
 import kotlinx.coroutines.CancellationException
 
 interface InventoryActionPlanner {
-    suspend fun plan(request: InventoryAgentRequest): InventoryAction
+    suspend fun plan(request: InventoryAgentRequest): InventoryAction {
+        return planWithDiagnostics(request).action
+    }
+
+    suspend fun planWithDiagnostics(request: InventoryAgentRequest): InventoryPlan
 }
 
 class RuleBasedInventoryActionPlanner(
     private val parser: InventoryCommandParser = InventoryCommandParser()
 ) : InventoryActionPlanner {
-    override suspend fun plan(request: InventoryAgentRequest): InventoryAction {
-        return parser.parse(request.recognizedText, request.today)
+    override suspend fun planWithDiagnostics(request: InventoryAgentRequest): InventoryPlan {
+        return InventoryPlan(parser.parse(request.recognizedText, request.today))
     }
 }
 
 class HybridInventoryActionPlanner(
     private val primary: InventoryActionPlanner,
-    private val fallback: InventoryActionPlanner
+    private val fallback: InventoryActionPlanner,
+    private val logger: AgentLogger = NoOpAgentLogger
 ) : InventoryActionPlanner {
-    override suspend fun plan(request: InventoryAgentRequest): InventoryAction {
+    override suspend fun planWithDiagnostics(request: InventoryAgentRequest): InventoryPlan {
         return try {
-            when (val action = primary.plan(request)) {
+            val primaryPlan = primary.planWithDiagnostics(request)
+            when (val action = primaryPlan.action) {
                 is InventoryAction.AskClarification -> {
-                    val fallbackAction = fallback.plan(request)
-                    if (fallbackAction is InventoryAction.AskClarification) action else fallbackAction
+                    val fallbackPlan = fallback.planWithDiagnostics(request)
+                    if (fallbackPlan.action is InventoryAction.AskClarification) {
+                        primaryPlan
+                    } else {
+                        logger.warn("LLM inventory planner requested clarification; using rule fallback")
+                        fallbackPlan.withDiagnostic(
+                            InventoryPlanningDiagnostic(
+                                kind = InventoryPlanningDiagnosticKind.LLM_FALLBACK,
+                                message = "AI 解析不确定，已使用本地规则解析",
+                                technicalMessage = action.message
+                            )
+                        )
+                    }
                 }
-                else -> action
+                else -> primaryPlan
             }
         } catch (exception: CancellationException) {
             throw exception
-        } catch (_: Exception) {
-            fallback.plan(request)
+        } catch (exception: Exception) {
+            logger.warn("LLM inventory planner failed; using rule fallback", exception)
+            fallback.planWithDiagnostics(request).withDiagnostic(
+                InventoryPlanningDiagnostic(
+                    kind = InventoryPlanningDiagnosticKind.LLM_FALLBACK,
+                    message = "AI 解析失败，已使用本地规则解析",
+                    technicalMessage = exception.message
+                )
+            )
         }
     }
 }

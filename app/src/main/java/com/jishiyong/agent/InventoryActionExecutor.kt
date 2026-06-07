@@ -3,7 +3,9 @@ package com.jishiyong.agent
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 
-class InventoryActionExecutor {
+class InventoryActionExecutor(
+    private val validator: InventoryActionValidator = InventoryActionValidator()
+) {
 
     suspend fun execute(
         pending: VoiceInputState.PendingConfirmation,
@@ -47,16 +49,12 @@ class InventoryActionExecutor {
         store: InventoryActionStore
     ): VoiceInputState {
         val draft = action.draft
-        return when {
-            draft.name.isBlank() -> VoiceInputState.Error("请确认要新增的物品名称", recognizedText)
-            draft.quantity <= 0 -> VoiceInputState.Error("数量必须大于 0", recognizedText)
-            draft.expirationDate.isBefore(draft.purchaseDate) -> {
-                VoiceInputState.Error("过期日期不能早于购买日期", recognizedText)
-            }
-            else -> {
-                store.insert(draft.toItem())
-                VoiceInputState.Success("已新增 ${draft.name} x${draft.quantity}")
-            }
+        val validationError = validator.validate(draft)
+        return if (validationError == null) {
+            store.insert(draft.toItem())
+            VoiceInputState.Success("已新增 ${draft.name} x${draft.quantity}")
+        } else {
+            VoiceInputState.Error(validationError, recognizedText)
         }
     }
 

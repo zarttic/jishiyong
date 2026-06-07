@@ -1,57 +1,46 @@
 package com.jishiyong.agent.llm
 
 import com.jishiyong.BuildConfig
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class OpenAiCompatibleLlmClient(
     private val baseUrl: String,
     private val model: String,
-    private val apiKey: String
+    private val apiKey: String,
+    private val callFactory: Call.Factory = defaultClient
 ) : LlmClient {
 
     override suspend fun complete(messages: List<LlmMessage>, temperature: Double): String {
-        return withContext(Dispatchers.IO) {
-            if (apiKey.isBlank()) {
-                throw IOException("AI API key is not configured")
-            }
-            if (baseUrl.isBlank() || model.isBlank()) {
-                throw IOException("AI API endpoint or model is not configured")
-            }
-
-            val endpoint = URL("${baseUrl.trimEnd('/')}/chat/completions")
-            val connection = endpoint.openConnection() as HttpURLConnection
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 30_000
-            connection.requestMethod = "POST"
-            connection.doOutput = true
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("Authorization", "Bearer $apiKey")
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            connection.setRequestProperty("User-Agent", "JiShiYong/${BuildConfig.VERSION_NAME}")
-
-            try {
-                val requestBody = buildRequestBody(messages, temperature).toString().toByteArray(Charsets.UTF_8)
-                connection.outputStream.use { output ->
-                    output.write(requestBody)
-                }
-
-                val responseCode = connection.responseCode
-                val responseText = connection.readResponseText(responseCode)
-                if (responseCode !in 200..299) {
-                    throw IOException("AI request failed: HTTP $responseCode $responseText")
-                }
-
-                parseContent(responseText)
-            } finally {
-                connection.disconnect()
-            }
+        if (apiKey.isBlank()) {
+            throw IOException("AI API key is not configured")
         }
+        if (baseUrl.isBlank() || model.isBlank()) {
+            throw IOException("AI API endpoint or model is not configured")
+        }
+
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/chat/completions")
+            .header("Accept", "application/json")
+            .header("Authorization", "Bearer $apiKey")
+            .header("Content-Type", "application/json; charset=utf-8")
+            .header("User-Agent", "JiShiYong/${BuildConfig.VERSION_NAME}")
+            .post(buildRequestBody(messages, temperature).toString().toRequestBody(JSON_MEDIA_TYPE))
+            .build()
+
+        return parseContent(executeWithRetry(request))
     }
 
     private fun buildRequestBody(messages: List<LlmMessage>, temperature: Double): JSONObject {
@@ -82,8 +71,92 @@ class OpenAiCompatibleLlmClient(
             ?: throw IOException("AI response content is empty")
     }
 
-    private fun HttpURLConnection.readResponseText(responseCode: Int): String {
-        val stream = if (responseCode in 200..299) inputStream else errorStream
-        return stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+    private suspend fun executeWithRetry(request: Request): String {
+        var lastException: IOException? = null
+        repeat(MAX_ATTEMPTS) { attempt ->
+            try {
+                val response = callFactory.newCall(request).awaitText()
+                if (response.isSuccessful) {
+                    return response.body
+                }
+
+                val exception = LlmHttpException(response.statusCode, response.body)
+                if (!exception.isRetryable || attempt == MAX_ATTEMPTS - 1) {
+                    throw exception
+                }
+                lastException = exception
+            } catch (exception: IOException) {
+                lastException = exception
+                if (exception is LlmHttpException && !exception.isRetryable) {
+                    throw exception
+                }
+                if (attempt == MAX_ATTEMPTS - 1) {
+                    throw exception
+                }
+            }
+            delay(RETRY_DELAY_MILLIS * (attempt + 1))
+        }
+        throw lastException ?: IOException("AI request failed")
+    }
+
+    private suspend fun Call.awaitText(): LlmHttpResponse {
+        return suspendCancellableCoroutine { continuation ->
+            continuation.invokeOnCancellation {
+                cancel()
+            }
+            enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (continuation.isActive) {
+                        continuation.resumeWithException(e)
+                    }
+                }
+
+                override fun onResponse(call: Call, response: okhttp3.Response) {
+                    val result = try {
+                        response.use {
+                            LlmHttpResponse(
+                                statusCode = it.code,
+                                isSuccessful = it.isSuccessful,
+                                body = it.body?.string().orEmpty()
+                            )
+                        }
+                    } catch (exception: IOException) {
+                        if (continuation.isActive) {
+                            continuation.resumeWithException(exception)
+                        }
+                        return
+                    }
+
+                    if (continuation.isActive) {
+                        continuation.resume(result)
+                    }
+                }
+            })
+        }
+    }
+
+    private data class LlmHttpResponse(
+        val statusCode: Int,
+        val isSuccessful: Boolean,
+        val body: String
+    )
+
+    private class LlmHttpException(
+        private val statusCode: Int,
+        private val responseText: String
+    ) : IOException("AI request failed: HTTP $statusCode $responseText") {
+        val isRetryable: Boolean = statusCode == 408 || statusCode == 429 || statusCode in 500..599
+    }
+
+    private companion object {
+        private const val MAX_ATTEMPTS = 2
+        private const val RETRY_DELAY_MILLIS = 350L
+        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+
+        private val defaultClient = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
     }
 }

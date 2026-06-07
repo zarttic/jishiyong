@@ -1,7 +1,7 @@
 package com.jishiyong.agent.llm
 
+import com.jishiyong.agent.CategoryInferencer
 import com.jishiyong.agent.InventoryAction
-import com.jishiyong.agent.InventoryCommandParser
 import com.jishiyong.agent.ItemDraft
 import com.jishiyong.data.db.entity.ItemCategory
 import com.jishiyong.util.Constants
@@ -10,7 +10,7 @@ import org.json.JSONObject
 import java.time.LocalDate
 
 class LlmInventoryActionJsonParser(
-    private val categoryInferer: InventoryCommandParser = InventoryCommandParser()
+    private val categoryInferencer: CategoryInferencer = CategoryInferencer()
 ) {
 
     fun parse(content: String, today: LocalDate): InventoryAction {
@@ -88,7 +88,7 @@ class LlmInventoryActionJsonParser(
         val normalized = rawCategory.trim()
         return ItemCategory.entries.firstOrNull {
             it.name.equals(normalized, ignoreCase = true) || it.displayName == normalized
-        } ?: categoryInferer.inferCategory(name)
+        } ?: categoryInferencer.infer(name)
     }
 
     private fun parseDate(value: String): LocalDate? {

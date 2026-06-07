@@ -1,0 +1,58 @@
+name: LLM Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      ai_api_base_url:
+        description: "OpenAI-compatible API base URL"
+        required: true
+        default: "https://api.edgefn.net/v1"
+        type: string
+      ai_model_name:
+        description: "Model name"
+        required: true
+        default: "DeepSeek-V3.2"
+        type: string
+      recognized_text:
+        description: "Chinese inventory command for the smoke test"
+        required: true
+        default: "今天喝了一瓶蒙牛纯牛奶"
+        type: string
+
+jobs:
+  llm-smoke:
+    runs-on: ubuntu-latest
+
+    env:
+      RUN_REAL_LLM_SMOKE: "true"
+      AI_API_KEY: ${{ secrets.AI_API_KEY }}
+      AI_API_BASE_URL: ${{ inputs.ai_api_base_url }}
+      AI_MODEL_NAME: ${{ inputs.ai_model_name }}
+      REAL_LLM_RECOGNIZED_TEXT: ${{ inputs.recognized_text }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Validate AI secret
+        run: |
+          set -euo pipefail
+          test -n "$AI_API_KEY" || {
+            echo "Missing repository secret AI_API_KEY"
+            exit 1
+          }
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run real LLM smoke test
+        run: ./gradlew :app:testDebugUnitTest --tests com.jishiyong.agent.RealLlmSmokeTest

@@ -6,10 +6,16 @@ import com.jishiyong.agent.llm.LlmInventoryActionJsonParser
 import com.jishiyong.agent.llm.LlmInventoryActionPlanner
 import com.jishiyong.agent.llm.LlmInventoryPromptBuilder
 import com.jishiyong.agent.llm.OpenAiCompatibleLlmClient
+import com.jishiyong.data.db.AppDatabase
 
 object InventoryAgentFactory {
     fun createDefault(context: Context): InventoryAgent {
-        val fallbackPlanner = RuleBasedInventoryActionPlanner()
+        val logger = AndroidAgentLogger()
+        val categoryInferencer = CategoryInferencer()
+        val parser = InventoryCommandParser(categoryInferencer)
+        val itemMatcher = InventoryItemMatcher(categoryInferencer)
+        val previewer = InventoryActionPreviewer(itemMatcher = itemMatcher)
+        val fallbackPlanner = RuleBasedInventoryActionPlanner(parser)
         val hasLlmConfiguration = BuildConfig.AI_API_KEY.isNotBlank() &&
                 BuildConfig.AI_API_BASE_URL.isNotBlank() &&
                 BuildConfig.AI_MODEL_NAME.isNotBlank()
@@ -24,9 +30,10 @@ object InventoryAgentFactory {
                         apiKey = BuildConfig.AI_API_KEY
                     ),
                     promptBuilder = LlmInventoryPromptBuilder(),
-                    actionParser = LlmInventoryActionJsonParser()
+                    actionParser = LlmInventoryActionJsonParser(categoryInferencer)
                 ),
-                fallback = fallbackPlanner
+                fallback = fallbackPlanner,
+                logger = logger
             )
         } else {
             mode = InventoryAgentMode.LOCAL_RULES
@@ -34,7 +41,14 @@ object InventoryAgentFactory {
         }
         return InventoryAgent(
             planner = planner,
-            memoryStore = PreferenceAgentMemoryStore(context),
+            memoryStore = RoomAgentMemoryStore(
+                dao = AppDatabase.getDatabase(context).agentMemoryDao(),
+                logger = logger
+            ),
+            parser = parser,
+            itemMatcher = itemMatcher,
+            previewer = previewer,
+            logger = logger,
             mode = mode
         )
     }
