@@ -9,6 +9,17 @@
     <!-- 系统语音识别 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <queries>
+        <!-- Android 11+ package visibility: allow SpeechRecognizer to discover recognition services. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <!-- Fallback recognizer activity used when the in-app RecognitionService API is unavailable. -->
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application
         android:name=".JiShiYongApp"
         android:allowBackup="false"
