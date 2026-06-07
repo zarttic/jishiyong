@@ -5,11 +5,11 @@
 .DS_Store
 /build
 /captures
+/output/
 .externalNativeBuild
 .cxx
 local.properties
 /app/build
-/app/schemas
 *.apk
 *.aab
 *.jks

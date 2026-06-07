@@ -91,8 +91,8 @@ agent/llm/LlmInventoryActionJsonParser.kt
 运行策略：
 
 ```text
-AI_API_KEY 为空 -> RuleBasedInventoryActionPlanner
-AI_API_KEY 非空 -> HybridInventoryActionPlanner(LLM 优先，规则解析兜底)
+运行时未配置 AI key -> RuleBasedInventoryActionPlanner
+运行时私有 SharedPreferences 中配置 AI key -> HybridInventoryActionPlanner(LLM 优先，规则解析兜底)
 ```
 
 ## 数据结构
@@ -179,22 +179,12 @@ data class ItemDraft(
 ```kotlin
 BuildConfig.AI_API_BASE_URL // 默认 https://api.edgefn.net/v1
 BuildConfig.AI_MODEL_NAME   // 默认 DeepSeek-V3.2
-BuildConfig.AI_API_KEY      // 默认空字符串
 ```
 
-不要把真实 API Key 提交到 Git。开发时可以放在本机 `local.properties`：
-
-```properties
-AI_API_BASE_URL=https://api.edgefn.net/v1
-AI_MODEL_NAME=DeepSeek-V3.2
-AI_API_KEY=your_api_key_here
-```
-
-也可以通过 Gradle 参数或环境变量传入：
+不要把真实 API Key 提交到 Git，也不要通过 Gradle 参数打包进 APK。App 运行时只应从私有 SharedPreferences 或后端代理获取 key；当前没有面向用户的设置入口，因此正式可配置化应补设置页或后端代理。开发真实 LLM smoke test 时可以使用环境变量：
 
 ```bash
-./gradlew assembleDebug -PAI_API_KEY=your_api_key_here
-AI_API_KEY=your_api_key_here ./gradlew assembleDebug
+RUN_REAL_LLM_SMOKE=true AI_API_KEY=your_api_key_here ./gradlew :app:testDebugUnitTest --tests com.jishiyong.agent.RealLlmSmokeTest
 ```
 
 EdgeFN Chat Completions 请求示例：

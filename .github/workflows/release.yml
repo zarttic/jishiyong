@@ -80,6 +80,23 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Verify Room schemas are committed
+        run: |
+          set -euo pipefail
+          if [ ! -d app/schemas ]; then
+            echo "::warning::Missing Room schema directory app/schemas; generate and commit the initial schema from an x86-64 Android SDK environment."
+            exit 0
+          fi
+          status="$(git status --porcelain -- app/schemas)"
+          test -z "$status" || {
+            echo "$status"
+            echo "Room schemas changed; commit the generated files."
+            exit 1
+          }
+
       - name: Build signed Release APK
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore

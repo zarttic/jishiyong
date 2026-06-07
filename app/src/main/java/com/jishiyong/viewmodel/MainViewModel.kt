@@ -65,6 +65,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _voiceInputState = MutableStateFlow<VoiceInputState>(VoiceInputState.Idle)
     val voiceInputState: StateFlow<VoiceInputState> = _voiceInputState.asStateFlow()
 
+    private val _operationError = MutableStateFlow<String?>(null)
+    val operationError: StateFlow<String?> = _operationError.asStateFlow()
+
     // ======================== 数据流 ========================
 
     private val allActiveItems: StateFlow<List<Item>> = repository.getActiveItems()
@@ -145,6 +148,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissUpdateCheckState() {
         _updateCheckState.value = UpdateCheckState.Idle
+    }
+
+    fun dismissOperationError() {
+        _operationError.value = null
+    }
+
+    fun reportOperationError(message: String) {
+        _operationError.value = message
     }
 
     fun startVoiceInput() {
@@ -240,37 +251,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _showAddDialog.value = false
     }
 
-    fun addItem(item: Item) {
-        viewModelScope.launch {
+    fun addItem(item: Item, onSuccess: () -> Unit = {}) {
+        launchWriteOperation("添加失败，请稍后再试") {
             repository.insert(item)
             _showAddDialog.value = false
+            onSuccess()
         }
     }
 
-    fun deleteItem(item: Item) {
-        viewModelScope.launch {
+    fun deleteItem(item: Item, onSuccess: () -> Unit = {}) {
+        launchWriteOperation("删除失败，请稍后再试") {
             repository.delete(item)
+            onSuccess()
         }
     }
 
-    fun markAsConsumed(item: Item, type: ConsumeType) {
-        viewModelScope.launch {
+    fun markAsConsumed(item: Item, type: ConsumeType, onSuccess: () -> Unit = {}) {
+        launchWriteOperation("标记失败，请稍后再试") {
             repository.markAsConsumed(item.id, type)
+            onSuccess()
         }
     }
 
     fun updateUsedQuantity(item: Item, quantity: Int) {
-        viewModelScope.launch {
+        launchWriteOperation("数量更新失败，请稍后再试") {
             if (quantity >= item.quantity) {
                 repository.markAsConsumed(item.id, ConsumeType.USED_UP)
             } else {
-                repository.updateUsedQuantity(item.id, quantity)
+                repository.updateUsedQuantity(item.id, quantity.coerceAtLeast(0))
             }
         }
     }
 
     fun deleteAllConsumed() {
-        viewModelScope.launch {
+        launchWriteOperation("清理失败，请稍后再试") {
             repository.deleteAllConsumed()
         }
     }
@@ -286,4 +300,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getExpiryStatus(item: Item): ExpiryStatus = repository.getExpiryStatus(item)
     fun getDaysUntilExpiry(item: Item): Int = repository.getDaysUntilExpiry(item)
+
+    private fun launchWriteOperation(
+        errorMessage: String,
+        block: suspend () -> Unit
+    ): Job {
+        return viewModelScope.launch {
+            try {
+                block()
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
+                _operationError.value = errorMessage
+            }
+        }
+    }
 }

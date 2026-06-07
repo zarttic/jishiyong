@@ -26,6 +26,15 @@ Use GitHub Actions for authoritative APK builds when local Android SDK tooling i
 
 Current local environment is `aarch64`. Gradle downloads an x86-64 `aapt2` binary that cannot execute on this machine, so Android build/test verification must be run through GitHub workflows instead of local Gradle commands.
 
+Podman is available, but it is not by itself a fix for the local `aapt2` incompatibility. Cross-architecture container verification requires both a pullable amd64 image and x86-64 user-mode emulation (`qemu-x86_64` with binfmt registration, or an equivalent wrapper). As of 2026-06-07 on this machine:
+
+- Docker Hub pulls may time out.
+- `/proc/sys/fs/binfmt_misc` has no x86-64 interpreter registered.
+- The available openEuler `qemu-user` / `qemu-user-static` packages provide arm/riscv interpreters here, not `qemu-x86_64`.
+- The installed Android SDK `aapt2` binaries are x86-64 and fail with `Exec format error`.
+
+Do not spend time retrying local Gradle Android build/test/schema generation unless those prerequisites have changed. Use GitHub Actions or an x86-64 Android SDK environment for authoritative `testDebugUnitTest`, `assembleDebug`, `assembleRelease`, and Room schema generation.
+
 ## Coding Style & Naming Conventions
 
 Use Kotlin with 4-space indentation and the official Kotlin style. Keep Compose functions in PascalCase, state variables in lower camelCase, and constants in upper snake case where appropriate. Prefer existing MVVM and repository patterns over new abstractions. Keep user-facing strings in resources when they may need localization.

@@ -16,18 +16,19 @@ object InventoryAgentFactory {
         val itemMatcher = InventoryItemMatcher(categoryInferencer)
         val previewer = InventoryActionPreviewer(itemMatcher = itemMatcher)
         val fallbackPlanner = RuleBasedInventoryActionPlanner(parser)
-        val hasLlmConfiguration = BuildConfig.AI_API_KEY.isNotBlank() &&
-                BuildConfig.AI_API_BASE_URL.isNotBlank() &&
-                BuildConfig.AI_MODEL_NAME.isNotBlank()
+        val aiConfiguration = AiAgentSettings(context).loadConfiguration(
+            defaultBaseUrl = BuildConfig.AI_API_BASE_URL,
+            defaultModel = BuildConfig.AI_MODEL_NAME
+        )
         val mode: InventoryAgentMode
-        val planner = if (hasLlmConfiguration) {
+        val planner = if (aiConfiguration.isComplete) {
             mode = InventoryAgentMode.LLM_WITH_RULE_FALLBACK
             HybridInventoryActionPlanner(
                 primary = LlmInventoryActionPlanner(
                     client = OpenAiCompatibleLlmClient(
-                        baseUrl = BuildConfig.AI_API_BASE_URL,
-                        model = BuildConfig.AI_MODEL_NAME,
-                        apiKey = BuildConfig.AI_API_KEY
+                        baseUrl = aiConfiguration.baseUrl,
+                        model = aiConfiguration.model,
+                        apiKey = aiConfiguration.apiKey
                     ),
                     promptBuilder = LlmInventoryPromptBuilder(),
                     actionParser = LlmInventoryActionJsonParser(categoryInferencer)

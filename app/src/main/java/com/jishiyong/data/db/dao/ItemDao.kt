@@ -16,6 +16,10 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE isConsumed = 0 ORDER BY expirationDate ASC")
     fun getActiveItems(): Flow<List<Item>>
 
+    /** 获取所有未消费物品快照，按过期日期升序 */
+    @Query("SELECT * FROM items WHERE isConsumed = 0 ORDER BY expirationDate ASC")
+    suspend fun getActiveItemsSnapshot(): List<Item>
+
     /** 获取所有已消费物品 */
     @Query("SELECT * FROM items WHERE isConsumed = 1 ORDER BY updatedAt DESC")
     fun getConsumedItems(): Flow<List<Item>>
@@ -54,31 +58,63 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE name LIKE '%' || :query || '%' OR note LIKE '%' || :query || '%' ORDER BY expirationDate ASC")
     fun searchItems(query: String): Flow<List<Item>>
 
-    /** 获取所有分类统计 */
-    @Query("SELECT category, COUNT(*) as count FROM items WHERE isConsumed = 0 GROUP BY category")
+    /** 获取当前未消费库存的分类统计 */
+    @Query("SELECT category, COUNT(*) as count FROM items WHERE isConsumed = 0 GROUP BY category ORDER BY count DESC")
     suspend fun getCategoryStats(): List<CategoryStat>
+
+    /** 获取指定创建时间范围内的分类统计 */
+    @Query("""
+        SELECT category, COUNT(*) as count FROM items
+        WHERE createdAt >= :startInclusive
+        AND createdAt < :endExclusive
+        GROUP BY category
+        ORDER BY count DESC
+    """)
+    suspend fun getCategoryStatsCreatedBetween(
+        startInclusive: Long,
+        endExclusive: Long
+    ): List<CategoryStat>
 
     /** 获取总物品数 */
     @Query("SELECT COUNT(*) FROM items")
     fun getTotalCount(): Flow<Int>
 
+    /** 获取指定创建时间范围内的物品总数 */
+    @Query("""
+        SELECT COUNT(*) FROM items
+        WHERE createdAt >= :startInclusive
+        AND createdAt < :endExclusive
+    """)
+    suspend fun getCreatedCountBetween(startInclusive: Long, endExclusive: Long): Int
+
     /** 获取活跃物品数 */
     @Query("SELECT COUNT(*) FROM items WHERE isConsumed = 0")
     fun getActiveCount(): Flow<Int>
+
+    /** 获取活跃物品数快照 */
+    @Query("SELECT COUNT(*) FROM items WHERE isConsumed = 0")
+    suspend fun getActiveCountSnapshot(): Int
 
     /** 获取已过期物品数 */
     @Query("SELECT COUNT(*) FROM items WHERE isConsumed = 0 AND expirationDate < :today")
     fun getExpiredCount(today: LocalDate): Flow<Int>
 
+    /** 获取已过期物品数快照 */
+    @Query("SELECT COUNT(*) FROM items WHERE isConsumed = 0 AND expirationDate < :today")
+    suspend fun getExpiredCountSnapshot(today: LocalDate): Int
+
     /** 获取本月消费统计 */
     @Query("""
         SELECT consumeType, COUNT(*) as count FROM items
         WHERE isConsumed = 1
-        AND updatedAt >= :startOfMonth
-        AND updatedAt <= :endOfMonth
+        AND updatedAt >= :startInclusive
+        AND updatedAt < :endExclusive
         GROUP BY consumeType
     """)
-    suspend fun getMonthlyConsumeStats(startOfMonth: Long, endOfMonth: Long): List<ConsumeStat>
+    suspend fun getMonthlyConsumeStats(
+        startInclusive: Long,
+        endExclusive: Long
+    ): List<ConsumeStat>
 
     /** 搜索活跃物品 */
     @Query("SELECT * FROM items WHERE isConsumed = 0 AND name LIKE '%' || :query || '%' ORDER BY expirationDate ASC")

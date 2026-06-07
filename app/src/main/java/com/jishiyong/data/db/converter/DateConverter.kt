@@ -16,12 +16,16 @@ class DateConverter {
     @TypeConverter
     fun toLocalDate(dateString: String?): LocalDate? {
         val text = dateString?.trim().orEmpty()
-        if (text.isBlank() || text == "null") return LocalDate.now()
+        if (text.isBlank() || text == "null") return INVALID_DATE_FALLBACK
 
         return try {
             LocalDate.parse(text)
         } catch (_: DateTimeParseException) {
-            LocalDate.now()
+            INVALID_DATE_FALLBACK
         }
+    }
+
+    private companion object {
+        val INVALID_DATE_FALLBACK: LocalDate = LocalDate.of(1970, 1, 1)
     }
 }

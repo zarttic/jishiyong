@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      run_real_llm_smoke:
+        description: "Run the real LLM smoke test with repository secrets"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -30,8 +36,22 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
+      - name: Verify Room schemas are committed
+        run: |
+          set -euo pipefail
+          if [ ! -d app/schemas ]; then
+            echo "::warning::Missing Room schema directory app/schemas; generate and commit the initial schema from an x86-64 Android SDK environment."
+            exit 0
+          fi
+          status="$(git status --porcelain -- app/schemas)"
+          test -z "$status" || {
+            echo "$status"
+            echo "Room schemas changed; commit the generated files."
+            exit 1
+          }
+
       - name: Run real LLM smoke test
-        if: github.event_name == 'workflow_dispatch' && github.ref_name == 'feature/llm-backed-inventory-agent'
+        if: github.event_name == 'workflow_dispatch' && inputs.run_real_llm_smoke
         env:
           RUN_REAL_LLM_SMOKE: "true"
           AI_API_KEY: ${{ secrets.AI_API_KEY }}

@@ -397,8 +397,9 @@ fun HomeScreen(
             item = item,
             onDismiss = { showConsumeMenuFor = null },
             onConsume = { type ->
-                showConsumeMenuFor = null
-                viewModel.markAsConsumed(item, type)
+                viewModel.markAsConsumed(item, type) {
+                    showConsumeMenuFor = null
+                }
             }
         )
     }
@@ -411,8 +412,9 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteItem(item)
-                        showDeleteDialog = null
+                        viewModel.deleteItem(item) {
+                            showDeleteDialog = null
+                        }
                     }
                 ) {
                     Text("删除", color = MaterialTheme.colorScheme.error)
@@ -439,7 +441,16 @@ fun HomeScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            uriHandler.openUri(state.update.downloadUrl)
+                            val url = state.update.downloadUrl
+                            if (url.startsWith("https://", ignoreCase = true)) {
+                                try {
+                                    uriHandler.openUri(url)
+                                } catch (_: Exception) {
+                                    viewModel.reportOperationError("打开下载链接失败，请稍后再试")
+                                }
+                            } else {
+                                viewModel.reportOperationError("下载链接不是安全的 HTTPS 地址")
+                            }
                             viewModel.dismissUpdateCheckState()
                         }
                     ) {

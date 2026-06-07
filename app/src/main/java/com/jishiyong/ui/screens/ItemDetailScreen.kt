@@ -163,8 +163,7 @@ fun ItemDetailScreen(
                                     },
                                     onClick = {
                                         showConsumeMenu = false
-                                        viewModel.markAsConsumed(item, type)
-                                        onBack()
+                                        viewModel.markAsConsumed(item, type, onSuccess = onBack)
                                     }
                                 )
                             }
@@ -269,9 +268,8 @@ fun ItemDetailScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteItem(item)
+                        viewModel.deleteItem(item, onSuccess = onBack)
                         showDeleteDialog = false
-                        onBack()
                     }
                 ) {
                     Text("删除", color = MaterialTheme.colorScheme.error)

@@ -9,6 +9,7 @@ import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -106,6 +107,31 @@ class LlmBackedInventoryAgentTest {
     }
 
     @Test
+    fun promptOmitsNonEssentialPrivateInventoryFields() = runTest {
+        val builder = LlmInventoryPromptBuilder()
+        val messages = builder.buildMessages(
+            InventoryAgentRequest(
+                recognizedText = "喝一瓶牛奶",
+                activeItems = listOf(
+                    item(
+                        id = 1,
+                        name = "蒙牛纯牛奶",
+                        note = "放在厨房第二层"
+                    )
+                ),
+                today = LocalDate.of(2026, 6, 5)
+            )
+        )
+
+        val prompt = messages.last().content
+        assertTrue(prompt.contains("蒙牛纯牛奶"))
+        assertTrue(prompt.contains("remaining_quantity"))
+        assertFalse(prompt.contains("放在厨房第二层"))
+        assertFalse(prompt.contains("purchase_date"))
+        assertFalse(prompt.contains("used_quantity"))
+    }
+
+    @Test
     fun rememberSuccessfulActionDelegatesToMemoryStore() = runTest {
         val memoryStore = RecordingMemoryStore()
         val agent = InventoryAgent(memoryStore = memoryStore)
@@ -143,7 +169,8 @@ class LlmBackedInventoryAgentTest {
         name: String,
         quantity: Int = 3,
         usedQuantity: Int = 0,
-        expirationDate: LocalDate = LocalDate.of(2026, 6, 12)
+        expirationDate: LocalDate = LocalDate.of(2026, 6, 12),
+        note: String = ""
     ): Item {
         return Item(
             id = id,
@@ -152,7 +179,8 @@ class LlmBackedInventoryAgentTest {
             purchaseDate = LocalDate.of(2026, 6, 1),
             expirationDate = expirationDate,
             quantity = quantity,
-            usedQuantity = usedQuantity
+            usedQuantity = usedQuantity,
+            note = note
         )
     }
 

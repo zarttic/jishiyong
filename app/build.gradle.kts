@@ -30,7 +30,6 @@ val appVersionCode = (findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?:
 val appVersionName = (findProperty("VERSION_NAME") as String?) ?: "1.0.0"
 val aiApiBaseUrl = configValue("AI_API_BASE_URL", "https://api.edgefn.net/v1")
 val aiModelName = configValue("AI_MODEL_NAME", "DeepSeek-V3.2")
-val aiApiKey = configValue("AI_API_KEY")
 val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 val releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
 val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
@@ -56,7 +55,6 @@ android {
         buildConfigField("String", "GITHUB_REPOSITORY_NAME", "\"zarttic/jishiyong\"")
         buildConfigField("String", "AI_API_BASE_URL", aiApiBaseUrl.asBuildConfigString())
         buildConfigField("String", "AI_MODEL_NAME", aiModelName.asBuildConfigString())
-        buildConfigField("String", "AI_API_KEY", aiApiKey.asBuildConfigString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

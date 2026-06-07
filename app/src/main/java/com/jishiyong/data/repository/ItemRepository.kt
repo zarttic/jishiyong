@@ -19,6 +19,8 @@ class ItemRepository(private val itemDao: ItemDao) {
 
     fun getActiveItems(): Flow<List<Item>> = itemDao.getActiveItems()
 
+    suspend fun getActiveItemsSnapshot(): List<Item> = itemDao.getActiveItemsSnapshot()
+
     fun getConsumedItems(): Flow<List<Item>> = itemDao.getConsumedItems()
 
     fun getActiveItemsByCategory(category: ItemCategory): Flow<List<Item>> =
@@ -51,8 +53,25 @@ class ItemRepository(private val itemDao: ItemDao) {
 
     suspend fun getCategoryStats(): List<CategoryStat> = itemDao.getCategoryStats()
 
-    suspend fun getMonthlyConsumeStats(startOfMonth: Long, endOfMonth: Long): List<ConsumeStat> =
-        itemDao.getMonthlyConsumeStats(startOfMonth, endOfMonth)
+    suspend fun getCategoryStatsCreatedBetween(
+        startInclusive: Long,
+        endExclusive: Long
+    ): List<CategoryStat> =
+        itemDao.getCategoryStatsCreatedBetween(startInclusive, endExclusive)
+
+    suspend fun getCreatedCountBetween(startInclusive: Long, endExclusive: Long): Int =
+        itemDao.getCreatedCountBetween(startInclusive, endExclusive)
+
+    suspend fun getActiveCountSnapshot(): Int = itemDao.getActiveCountSnapshot()
+
+    suspend fun getExpiredCountSnapshot(today: LocalDate = LocalDate.now()): Int =
+        itemDao.getExpiredCountSnapshot(today)
+
+    suspend fun getMonthlyConsumeStats(
+        startInclusive: Long,
+        endExclusive: Long
+    ): List<ConsumeStat> =
+        itemDao.getMonthlyConsumeStats(startInclusive, endExclusive)
 
     // ======================== 写入 ========================
 
@@ -79,7 +98,7 @@ class ItemRepository(private val itemDao: ItemDao) {
      */
     suspend fun getItemsNeedingReminders(): Map<Item, List<Int>> {
         val today = LocalDate.now()
-        val items = itemDao.getItemsExpiringSoon(today, today.plusDays(31))
+        val items = itemDao.getActiveItemsSnapshot()
         val result = mutableMapOf<Item, List<Int>>()
 
         for (item in items) {
@@ -130,7 +149,7 @@ fun getTriggeredReminderLevels(item: Item, today: LocalDate): List<Int> {
     if (daysUntilExpiry < 0) return emptyList()
 
     return item.reminderDays
-        .filter { it == daysUntilExpiry }
+        .filter { it > 0 && daysUntilExpiry <= it }
         .distinct()
         .sorted()
 }

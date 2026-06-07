@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Inventory2
@@ -123,9 +124,11 @@ fun StatisticsScreen(
                 MonthReceipt(
                     selectedMonth = uiState.selectedMonth,
                     wasteRate = wasteRate,
+                    added = uiState.totalItems,
                     consumed = uiState.consumedThisMonth,
                     wasted = uiState.wastedThisMonth,
                     active = uiState.activeItems,
+                    expired = uiState.expiredItems,
                     categoryStats = uiState.categoryStats,
                     consumeStats = uiState.monthlyConsumeStats,
                     onMonthSelected = viewModel::selectMonth
@@ -141,9 +144,11 @@ fun StatisticsScreen(
 private fun MonthReceipt(
     selectedMonth: YearMonth,
     wasteRate: Int,
+    added: Int,
     consumed: Int,
     wasted: Int,
     active: Int,
+    expired: Int,
     categoryStats: List<CategoryStat>,
     consumeStats: List<ConsumeStat>,
     onMonthSelected: (YearMonth) -> Unit
@@ -179,7 +184,11 @@ private fun MonthReceipt(
                         fontWeight = FontWeight.ExtraBold
                     )
                     Text(
-                        text = if (wasteRate > 30) "临期处理偏晚，下次可以少量多次补货。" else "用掉和库存节奏还算稳。",
+                        text = when {
+                            wasteRate > 30 -> "临期处理偏晚，下次可以少量多次补货。"
+                            expired > 0 -> "当前还有 $expired 件已过期，先处理这批。"
+                            else -> "用掉和入库节奏还算稳。"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -197,6 +206,13 @@ private fun MonthReceipt(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ReceiptMetric(
+                    label = "入库",
+                    count = added,
+                    icon = Icons.Default.AddCircle,
+                    color = BrandPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                ReceiptMetric(
                     label = "用掉",
                     count = consumed,
                     icon = Icons.Default.Verified,
@@ -210,20 +226,14 @@ private fun MonthReceipt(
                     color = StatusCritical,
                     modifier = Modifier.weight(1f)
                 )
-                ReceiptMetric(
-                    label = "库存",
-                    count = active,
-                    icon = Icons.Default.Inventory2,
-                    color = BrandPrimary,
-                    modifier = Modifier.weight(1f)
-                )
             }
+            InventorySnapshotLine(active = active, expired = expired)
 
             ReceiptDivider()
 
-            ReceiptSectionTitle("分类占比")
+            ReceiptSectionTitle("入库分类")
             if (categoryStats.isEmpty()) {
-                EmptyReceiptLine("这个月还没有分类记录")
+                EmptyReceiptLine("这个月还没有新增物品")
             } else {
                 val maxCount = categoryStats.maxOfOrNull { it.count } ?: 1
                 categoryStats.forEach { stat ->
@@ -255,6 +265,35 @@ private fun MonthReceipt(
                 message = reportSuggestion(wasteRate, categoryStats.firstOrNull()?.category)
             )
         }
+    }
+}
+
+@Composable
+private fun InventorySnapshotLine(
+    active: Int,
+    expired: Int
+) {
+    val text = if (expired > 0) {
+        "当前库存 $active 件，其中 $expired 件已过期"
+    } else {
+        "当前库存 $active 件，没有未处理过期物品"
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Inventory2,
+            contentDescription = null,
+            tint = BrandPrimary,
+            modifier = Modifier.size(18.dp)
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

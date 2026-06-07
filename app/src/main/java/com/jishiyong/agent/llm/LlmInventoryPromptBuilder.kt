@@ -37,12 +37,8 @@ class LlmInventoryPromptBuilder {
                         .put("name", item.name)
                         .put("category", item.category.name)
                         .put("category_display_name", item.category.displayName)
-                        .put("quantity", item.quantity)
-                        .put("used_quantity", item.usedQuantity)
                         .put("remaining_quantity", item.remainingQuantity())
-                        .put("purchase_date", item.purchaseDate.toString())
                         .put("expiration_date", item.expirationDate.toString())
-                        .put("note", item.note)
                 )
             }
         return items
@@ -50,19 +46,22 @@ class LlmInventoryPromptBuilder {
 
     private fun memoriesJson(request: InventoryAgentRequest): JSONArray {
         val memories = JSONArray()
-        request.memories.forEach { memory ->
-            memories.put(
-                JSONObject()
-                    .put("key", memory.key)
-                    .put("value", memory.value)
-                    .put("weight", memory.weight)
-            )
-        }
+        request.memories
+            .take(MAX_MEMORIES_IN_PROMPT)
+            .forEach { memory ->
+                memories.put(
+                    JSONObject()
+                        .put("key", memory.key)
+                        .put("value", memory.value)
+                        .put("weight", memory.weight)
+                )
+            }
         return memories
     }
 
     private companion object {
-        private const val MAX_ACTIVE_ITEMS_IN_PROMPT = 50
+        private const val MAX_ACTIVE_ITEMS_IN_PROMPT = 20
+        private const val MAX_MEMORIES_IN_PROMPT = 10
 
         private val systemPrompt = """
             你是“及时用”的库存 agent。你采用工具规划模式：只负责把用户自然语言转成一个待确认的结构化库存动作，不直接执行数据库写入。
