@@ -1,11 +1,34 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
     alias(libs.plugins.ksp)
 }
 
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun configValue(name: String, defaultValue: String = ""): String {
+    return (findProperty(name) as String?)
+        ?: localProperties.getProperty(name)
+        ?: System.getenv(name)
+        ?: defaultValue
+}
+
+fun String.asBuildConfigString(): String {
+    return "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+}
+
 val appVersionCode = (findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 1
 val appVersionName = (findProperty("VERSION_NAME") as String?) ?: "1.0.0"
+val aiApiBaseUrl = configValue("AI_API_BASE_URL", "https://api.edgefn.net/v1")
+val aiModelName = configValue("AI_MODEL_NAME", "DeepSeek-V3.2")
+val aiApiKey = configValue("AI_API_KEY")
 val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 val releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
 val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
@@ -29,6 +52,9 @@ android {
         versionName = appVersionName
 
         buildConfigField("String", "GITHUB_REPOSITORY_NAME", "\"zarttic/jishiyong\"")
+        buildConfigField("String", "AI_API_BASE_URL", aiApiBaseUrl.asBuildConfigString())
+        buildConfigField("String", "AI_MODEL_NAME", aiModelName.asBuildConfigString())
+        buildConfigField("String", "AI_API_KEY", aiApiKey.asBuildConfigString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -125,4 +151,6 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

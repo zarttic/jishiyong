@@ -8,6 +8,7 @@ import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /**
  * 物品数据仓库
@@ -78,13 +79,11 @@ class ItemRepository(private val itemDao: ItemDao) {
      */
     suspend fun getItemsNeedingReminders(): Map<Item, List<Int>> {
         val today = LocalDate.now()
-        // 获取所有未消费且未过期超过30天的物品
-        val items = itemDao.getItemsExpiringBefore(today.plusDays(31))
+        val items = itemDao.getItemsExpiringSoon(today, today.plusDays(31))
         val result = mutableMapOf<Item, List<Int>>()
 
         for (item in items) {
-            val daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(today, item.expirationDate).toInt()
-            val triggeredLevels = item.reminderDays.filter { it >= daysUntilExpiry }
+            val triggeredLevels = getTriggeredReminderLevels(item, today)
             if (triggeredLevels.isNotEmpty()) {
                 result[item] = triggeredLevels
             }
@@ -97,7 +96,7 @@ class ItemRepository(private val itemDao: ItemDao) {
      */
     fun getDaysUntilExpiry(item: Item): Int {
         val today = LocalDate.now()
-        return java.time.temporal.ChronoUnit.DAYS.between(today, item.expirationDate).toInt()
+        return ChronoUnit.DAYS.between(today, item.expirationDate).toInt()
     }
 
     /**
@@ -124,4 +123,14 @@ enum class ExpiryStatus(val displayName: String) {
     EXPIRING_SOON("临近过期"),
     EXPIRING_CRITICAL("紧急"),
     EXPIRED("已过期")
+}
+
+fun getTriggeredReminderLevels(item: Item, today: LocalDate): List<Int> {
+    val daysUntilExpiry = ChronoUnit.DAYS.between(today, item.expirationDate).toInt()
+    if (daysUntilExpiry < 0) return emptyList()
+
+    return item.reminderDays
+        .filter { it == daysUntilExpiry }
+        .distinct()
+        .sorted()
 }

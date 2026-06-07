@@ -46,7 +46,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.ui.components.categoryColor
@@ -68,6 +68,7 @@ import com.jishiyong.ui.components.remainingDaysLabel
 import com.jishiyong.ui.components.statusColor
 import com.jishiyong.ui.components.statusLabel
 import com.jishiyong.util.DateUtils
+import com.jishiyong.viewmodel.ItemDetailUiState
 import com.jishiyong.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,12 +79,19 @@ fun ItemDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val activeItems by viewModel.activeItems.collectAsState()
-    val item = activeItems.find { it.id == itemId }
-
-    if (item == null) {
-        MissingItem(onBack = onBack)
-        return
+    val detailState by remember(itemId) {
+        viewModel.getItemDetailState(itemId)
+    }.collectAsStateWithLifecycle(initialValue = ItemDetailUiState.Loading)
+    val item = when (val state = detailState) {
+        ItemDetailUiState.Loading -> {
+            LoadingItem()
+            return
+        }
+        ItemDetailUiState.Missing -> {
+            MissingItem(onBack = onBack)
+            return
+        }
+        is ItemDetailUiState.Loaded -> state.item
     }
 
     val expiryStatus = viewModel.getExpiryStatus(item)
@@ -472,6 +480,35 @@ private fun DetailRow(
 }
 
 @Composable
+private fun LoadingItem() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Surface(
+                modifier = Modifier.size(58.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Inventory2,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("正在加载物品")
+        }
+    }
+}
+
+@Composable
 private fun MissingItem(onBack: () -> Unit) {
     Box(
         modifier = Modifier
@@ -495,7 +532,7 @@ private fun MissingItem(onBack: () -> Unit) {
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text("物品不存在或已处理")
+            Text("物品不存在")
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onBack, shape = RoundedCornerShape(8.dp)) {
                 Text("返回")

@@ -7,6 +7,8 @@ import com.jishiyong.JiShiYongApp
 import com.jishiyong.data.db.dao.CategoryStat
 import com.jishiyong.data.db.dao.ConsumeStat
 import com.jishiyong.data.repository.ItemRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,13 +34,15 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _uiState = MutableStateFlow(StatisticsUiState())
     val uiState: StateFlow<StatisticsUiState> = _uiState.asStateFlow()
+    private var loadJob: Job? = null
 
     init {
         loadStatistics()
     }
 
     fun loadStatistics() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             try {
                 val categoryStats = repository.getCategoryStats()
 
@@ -70,6 +74,8 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                     wastedThisMonth = wastedThisMonth,
                     selectedMonth = selectedMonth
                 )
+            } catch (exception: CancellationException) {
+                throw exception
             } catch (_: Exception) {
                 // Keep the current screen state if old local data cannot be parsed.
             }

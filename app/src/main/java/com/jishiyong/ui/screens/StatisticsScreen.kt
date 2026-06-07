@@ -34,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.ItemCategory
 import com.jishiyong.ui.components.categoryColor
@@ -62,7 +62,7 @@ fun StatisticsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val wasteRate = if (uiState.consumedThisMonth > 0) {
         (uiState.wastedThisMonth.toFloat() / uiState.consumedThisMonth * 100).toInt()
     } else {

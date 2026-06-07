@@ -58,7 +58,6 @@ import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
 import com.jishiyong.ui.components.categoryColor
 import com.jishiyong.ui.components.categoryIcon
-import com.jishiyong.util.Constants
 import com.jishiyong.util.DateUtils
 import java.time.LocalDate
 import java.util.Calendar
@@ -78,6 +77,9 @@ fun AddItemScreen(
     var quantity by remember { mutableStateOf("1") }
     var reminderDaysText by remember { mutableStateOf("7,3,1") }
     var nameError by remember { mutableStateOf(false) }
+    var quantityError by remember { mutableStateOf(false) }
+    var dateError by remember { mutableStateOf(false) }
+    var reminderDaysError by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -155,9 +157,18 @@ fun AddItemScreen(
                 OutlinedTextField(
                     value = quantity,
                     onValueChange = { text: String ->
-                        if (text.all { it.isDigit() }) quantity = text
+                        if (text.all { it.isDigit() }) {
+                            quantity = text
+                            quantityError = false
+                        }
                     },
                     label = { Text("数量") },
+                    isError = quantityError,
+                    supportingText = {
+                        if (quantityError) {
+                            Text("请输入大于 0 的数量")
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -173,23 +184,35 @@ fun AddItemScreen(
                 DateField(
                     label = "购买日期",
                     date = purchaseDate,
-                    onDateSelected = { purchaseDate = it }
+                    onDateSelected = {
+                        purchaseDate = it
+                        dateError = false
+                    }
                 )
                 DateField(
                     label = "到期日期",
                     date = expirationDate,
-                    onDateSelected = { expirationDate = it }
+                    onDateSelected = {
+                        expirationDate = it
+                        dateError = false
+                    },
+                    isError = dateError,
+                    supportingText = if (dateError) "到期日期不能早于购买日期" else null
                 )
             }
 
             FormSection(title = "提醒与备注") {
                 OutlinedTextField(
                     value = reminderDaysText,
-                    onValueChange = { reminderDaysText = it },
+                    onValueChange = {
+                        reminderDaysText = it
+                        reminderDaysError = false
+                    },
                     label = { Text("提前提醒天数") },
                     placeholder = { Text("7,3,1") },
+                    isError = reminderDaysError,
                     supportingText = {
-                        Text("用逗号分隔，例如 7,3,1")
+                        Text(if (reminderDaysError) "请输入用逗号分隔的正整数" else "用逗号分隔，例如 7,3,1")
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -223,12 +246,22 @@ fun AddItemScreen(
                         return@Button
                     }
 
-                    val reminderDays = reminderDaysText
-                        .split(",")
-                        .mapNotNull { it.trim().toIntOrNull() }
-                        .filter { it > 0 }
-                        .sorted()
-                        .ifEmpty { Constants.DEFAULT_REMINDER_DAYS }
+                    val parsedQuantity = quantity.toIntOrNull()
+                    if (parsedQuantity == null || parsedQuantity <= 0) {
+                        quantityError = true
+                        return@Button
+                    }
+
+                    if (expirationDate.isBefore(purchaseDate)) {
+                        dateError = true
+                        return@Button
+                    }
+
+                    val reminderDays = parseReminderDays(reminderDaysText)
+                    if (reminderDays == null) {
+                        reminderDaysError = true
+                        return@Button
+                    }
 
                     onSave(
                         Item(
@@ -237,7 +270,7 @@ fun AddItemScreen(
                             purchaseDate = purchaseDate,
                             expirationDate = expirationDate,
                             note = note.trim(),
-                            quantity = quantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+                            quantity = parsedQuantity,
                             reminderDays = reminderDays
                         )
                     )
@@ -331,33 +364,42 @@ private fun CategoryPicker(
 private fun DateField(
     label: String,
     date: LocalDate,
-    onDateSelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit,
+    isError: Boolean = false,
+    supportingText: String? = null
 ) {
     val context = LocalContext.current
+    val showDatePicker = {
+        val calendar = Calendar.getInstance()
+        calendar.set(date.year, date.monthValue - 1, date.dayOfMonth)
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                onDateSelected(LocalDate.of(year, month + 1, dayOfMonth))
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
 
     OutlinedTextField(
         value = DateUtils.formatChinese(date),
         onValueChange = {},
         label = { Text(label) },
         readOnly = true,
-        modifier = Modifier.fillMaxWidth(),
+        isError = isError,
+        supportingText = supportingText?.let { message ->
+            { Text(message) }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showDatePicker() },
         leadingIcon = {
             Icon(Icons.Default.CalendarMonth, contentDescription = null)
         },
         trailingIcon = {
-            IconButton(onClick = {
-                val calendar = Calendar.getInstance()
-                calendar.set(date.year, date.monthValue - 1, date.dayOfMonth)
-                DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        onDateSelected(LocalDate.of(year, month + 1, dayOfMonth))
-                    },
-                    calendar.get(Calendar.YEAR),
-                    calendar.get(Calendar.MONTH),
-                    calendar.get(Calendar.DAY_OF_MONTH)
-                ).show()
-            }) {
+            IconButton(onClick = { showDatePicker() }) {
                 Icon(Icons.Default.EditCalendar, contentDescription = "选择日期")
             }
         },
@@ -373,3 +415,18 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = MaterialTheme.colorScheme.primary,
     unfocusedBorderColor = MaterialTheme.colorScheme.outline
 )
+
+private fun parseReminderDays(text: String): List<Int>? {
+    val tokens = text
+        .split(',', '，')
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+    if (tokens.isEmpty()) return null
+
+    val days = tokens.map { token ->
+        val value = token.toIntOrNull() ?: return null
+        if (value <= 0) return null
+        value
+    }
+    return days.distinct().sorted()
+}
