@@ -1,0 +1,2298 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>及时用 · 冰箱门原型</title>
+  <style>
+    :root {
+      --paper: #f7f3e9;
+      --paper-deep: #eee4d0;
+      --door: #f3eee2;
+      --door-line: #e2d8c4;
+      --surface: #fffdf7;
+      --surface-soft: #fbf6ea;
+      --fold: #eee3cc;
+      --ink: #18231f;
+      --muted: #68746f;
+      --line: #ded5c2;
+      --brand: #176b5c;
+      --brand-dark: #0f4f44;
+      --brand-soft: #dceee6;
+      --fresh: #1f8f64;
+      --warn: #c9801d;
+      --urgent: #d85c2a;
+      --bad: #ba3d45;
+      --old: #7a827d;
+      --blue: #2f73c8;
+      --daily: #6c7a89;
+      --med: #c43d63;
+      --cos: #b55468;
+      --device: #4c63b6;
+      --cloth: #1c8c84;
+      --other: #6f7d72;
+      --shadow: 0 26px 76px rgba(55, 42, 18, 0.18);
+      --soft-shadow: 0 16px 34px rgba(55, 42, 18, 0.1);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family:
+        "Noto Sans SC",
+        "PingFang SC",
+        "Microsoft YaHei",
+        "Hiragino Sans GB",
+        system-ui,
+        sans-serif;
+      color: var(--ink);
+      letter-spacing: 0;
+      background:
+        linear-gradient(115deg, rgba(23, 107, 92, 0.09), transparent 36%),
+        radial-gradient(circle at 84% 14%, rgba(201, 128, 29, 0.14), transparent 28%),
+        var(--paper);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .page {
+      width: min(1240px, calc(100vw - 30px));
+      min-height: 100dvh;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(300px, 0.95fr) minmax(380px, 1.05fr);
+      align-items: center;
+      gap: 48px;
+      padding: 34px 0;
+    }
+
+    .panel {
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 18px;
+    }
+
+    .kicker {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgba(23, 107, 92, 0.2);
+      border-radius: 999px;
+      color: var(--brand-dark);
+      background: rgba(255, 253, 247, 0.72);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .kicker::before {
+      content: "";
+      width: 8px;
+      height: 18px;
+      border-radius: 999px;
+      background: var(--brand);
+    }
+
+    h1 {
+      max-width: 13ch;
+      margin: 0;
+      font-size: clamp(39px, 5vw, 68px);
+      line-height: 1.04;
+      font-weight: 850;
+    }
+
+    .intro {
+      max-width: 560px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      max-width: 540px;
+      padding-top: 8px;
+    }
+
+    .tab {
+      position: relative;
+      overflow: hidden;
+      min-height: 54px;
+      border: 1px solid rgba(23, 107, 92, 0.16);
+      border-radius: 16px;
+      padding: 11px 12px;
+      color: #33413c;
+      background: rgba(255, 253, 247, 0.6);
+      cursor: pointer;
+      text-align: left;
+      transition:
+        transform 240ms var(--ease),
+        background 240ms var(--ease),
+        color 240ms var(--ease),
+        border-color 240ms var(--ease);
+    }
+
+    .tab strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .tab span {
+      display: block;
+      margin-top: 3px;
+      font-size: 12px;
+      color: inherit;
+      opacity: 0.72;
+    }
+
+    .tab:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 253, 247, 0.9);
+      border-color: rgba(23, 107, 92, 0.32);
+    }
+
+    .tab:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .tab.active {
+      color: var(--surface);
+      border-color: var(--brand);
+      background: var(--brand);
+    }
+
+    .tab::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(115deg, transparent 0 42%, rgba(255, 255, 255, 0.32) 50%, transparent 58%);
+      transform: translateX(-120%);
+      opacity: 0;
+    }
+
+    .tab.active::after {
+      animation: tabSweep 620ms var(--ease) both;
+    }
+
+    .background-lab {
+      display: grid;
+      gap: 10px;
+      max-width: 560px;
+      padding: 16px;
+      border: 1px solid rgba(23, 107, 92, 0.14);
+      border-radius: 22px;
+      background: rgba(255, 253, 247, 0.48);
+    }
+
+    .background-lab-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .background-lab-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 880;
+      color: var(--ink);
+    }
+
+    .background-lab-copy {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .background-options {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .bg-option {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+      border: 1px solid rgba(110, 91, 54, 0.13);
+      border-radius: 15px;
+      padding: 8px;
+      color: #33413c;
+      background: rgba(255, 253, 247, 0.58);
+      cursor: pointer;
+      text-align: left;
+      transition:
+        transform 220ms var(--ease),
+        border-color 220ms var(--ease),
+        background 220ms var(--ease),
+        color 220ms var(--ease);
+    }
+
+    .bg-option:hover {
+      transform: translateY(-1px);
+      border-color: rgba(23, 107, 92, 0.3);
+      background: rgba(255, 253, 247, 0.88);
+    }
+
+    .bg-option:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .bg-option.active {
+      color: var(--surface);
+      border-color: var(--brand);
+      background: var(--brand);
+    }
+
+    .bg-swatch {
+      display: block;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(24, 35, 31, 0.08);
+      background: var(--swatch);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+
+    .bg-option span {
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 780;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .background-caption {
+      min-height: 34px;
+      margin: 0;
+      color: #40504a;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .icon-lab {
+      display: grid;
+      gap: 13px;
+      max-width: 560px;
+      padding: 14px;
+      border: 1px solid rgba(23, 107, 92, 0.14);
+      border-radius: 22px;
+      background: rgba(255, 253, 247, 0.5);
+    }
+
+    .icon-lab-head {
+      display: grid;
+      gap: 4px;
+    }
+
+    .icon-preview {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 24%;
+      box-shadow: 0 16px 28px rgba(55, 42, 18, 0.12);
+    }
+
+    .icon-variants {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .icon-variant {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid rgba(110, 91, 54, 0.12);
+      border-radius: 17px;
+      background: rgba(255, 253, 247, 0.58);
+    }
+
+    .icon-variant span {
+      overflow: hidden;
+      color: #40504a;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .icon-lab-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 880;
+      color: var(--ink);
+    }
+
+    .icon-lab-copy {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .notes {
+      display: grid;
+      gap: 9px;
+      margin-top: 4px;
+      max-width: 560px;
+    }
+
+    .note-line {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 12px;
+      color: #40504a;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .note-line::before {
+      content: "";
+      width: 18px;
+      height: 2px;
+      margin-top: 11px;
+      border-radius: 999px;
+      background: var(--brand);
+    }
+
+    .stage {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 850px;
+    }
+
+    .phone-shadow {
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      bottom: 34px;
+      height: 54px;
+      border-radius: 999px;
+      background: rgba(53, 39, 17, 0.18);
+      filter: blur(22px);
+    }
+
+    .phone {
+      position: relative;
+      width: min(410px, 100%);
+      height: 822px;
+      overflow: hidden;
+      border: 10px solid #1c211e;
+      border-radius: 42px;
+      background: var(--door);
+      box-shadow: var(--shadow);
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      z-index: 20;
+      top: 10px;
+      left: 50%;
+      width: 118px;
+      height: 25px;
+      transform: translateX(-50%);
+      border-radius: 0 0 18px 18px;
+      background: #1c211e;
+    }
+
+    .screen {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      --shelf-line-alpha: 0.24;
+      background:
+        radial-gradient(circle at 18% 8%, rgba(255, 253, 247, 0.62), transparent 26%),
+        radial-gradient(circle at 92% 18%, rgba(23, 107, 92, 0.08), transparent 30%),
+        linear-gradient(90deg, rgba(115, 98, 61, 0.08) 0%, transparent 13%, transparent 82%, rgba(255, 253, 247, 0.5) 100%),
+        linear-gradient(180deg, rgba(23, 107, 92, 0.07), transparent 25%),
+        var(--door);
+      box-shadow:
+        inset 12px 0 22px rgba(92, 75, 42, 0.06),
+        inset -12px 0 24px rgba(255, 253, 247, 0.64);
+    }
+
+    .screen[data-bg="mist"] {
+      --shelf-line-alpha: 0.12;
+      background:
+        radial-gradient(circle at 24% 12%, rgba(255, 255, 255, 0.86), transparent 30%),
+        radial-gradient(circle at 88% 5%, rgba(151, 191, 184, 0.26), transparent 34%),
+        linear-gradient(180deg, #eff6f2 0%, #f8f5ec 62%, #efe6d4 100%);
+      box-shadow:
+        inset 0 18px 38px rgba(255, 255, 255, 0.76),
+        inset 0 -26px 36px rgba(110, 91, 54, 0.06);
+    }
+
+    .screen[data-bg="paper"] {
+      --shelf-line-alpha: 0.18;
+      background:
+        linear-gradient(90deg, rgba(123, 91, 35, 0.05) 0 1px, transparent 1px 100%),
+        linear-gradient(180deg, rgba(123, 91, 35, 0.035) 0 1px, transparent 1px 100%),
+        radial-gradient(circle at 82% 13%, rgba(201, 128, 29, 0.1), transparent 24%),
+        #f8f1df;
+      background-size:
+        22px 22px,
+        22px 22px,
+        auto,
+        auto;
+      box-shadow:
+        inset 12px 0 22px rgba(92, 75, 42, 0.04),
+        inset -10px 0 24px rgba(255, 253, 247, 0.58);
+    }
+
+    .screen[data-bg="tile"] {
+      --shelf-line-alpha: 0.08;
+      background:
+        linear-gradient(90deg, rgba(130, 145, 137, 0.16) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(130, 145, 137, 0.13) 1px, transparent 1px),
+        linear-gradient(180deg, #f7f5ed 0%, #edf4ef 100%);
+      background-size:
+        72px 72px,
+        72px 72px,
+        auto;
+      box-shadow:
+        inset 0 18px 34px rgba(255, 255, 255, 0.54),
+        inset 0 -20px 34px rgba(23, 107, 92, 0.05);
+    }
+
+    .screen[data-bg="shelf"] {
+      --shelf-line-alpha: 0.28;
+      background:
+        linear-gradient(180deg, transparent 0 22%, rgba(188, 169, 129, 0.15) 22.2%, transparent 22.8% 47%, rgba(188, 169, 129, 0.13) 47.2%, transparent 47.8% 73%, rgba(188, 169, 129, 0.12) 73.2%, transparent 73.8%),
+        radial-gradient(circle at 12% 10%, rgba(255, 253, 247, 0.58), transparent 28%),
+        linear-gradient(180deg, #f4eee0 0%, #f8f3e7 56%, #ebe1cd 100%);
+      box-shadow:
+        inset 12px 0 24px rgba(92, 75, 42, 0.05),
+        inset -12px 0 24px rgba(255, 253, 247, 0.58);
+    }
+
+    .screen.switching::after {
+      content: "";
+      position: absolute;
+      inset: 42px 14px 92px;
+      z-index: 14;
+      border-radius: 30px;
+      pointer-events: none;
+      background:
+        linear-gradient(115deg, transparent 0 38%, rgba(255, 253, 247, 0.72) 48%, transparent 60%),
+        linear-gradient(180deg, rgba(23, 107, 92, 0.08), transparent);
+      transform: translateX(-118%);
+      animation: scanSweep 560ms var(--ease) both;
+    }
+
+    .screen::before,
+    .screen::after {
+      content: "";
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      height: 1px;
+      background: rgba(191, 177, 145, var(--shelf-line-alpha));
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 13%, #000 87%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 13%, #000 87%, transparent);
+      pointer-events: none;
+    }
+
+    .screen::before {
+      top: 180px;
+    }
+
+    .screen::after {
+      bottom: 172px;
+    }
+
+    .screen-page {
+      position: absolute;
+      inset: 0;
+      overflow: auto;
+      padding: 50px 18px 108px;
+      opacity: 0;
+      transform: translateY(16px) scale(0.985);
+      pointer-events: none;
+      transition:
+        opacity 280ms var(--ease),
+        transform 360ms var(--ease);
+      scrollbar-width: none;
+    }
+
+    .screen-page::-webkit-scrollbar {
+      display: none;
+    }
+
+    .screen-page.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .screen-page.active .topbar {
+      animation: pageLift 420ms var(--ease) both;
+    }
+
+    .screen-page.active .hero-note {
+      animation: noteArrive 560ms var(--ease) 80ms both;
+    }
+
+    .screen-page.active .assistant-note {
+      animation:
+        noteArrive 560ms var(--ease) 180ms both,
+        floatNote 4.2s var(--ease) 860ms infinite;
+    }
+
+    .screen-page.active .search-row,
+    .screen-page.active .category-strip,
+    .screen-page.active .form-block,
+    .screen-page.active .sheet-actions {
+      animation: pageLift 460ms var(--ease) 220ms both;
+    }
+
+    .screen-page.active .shelf-head {
+      animation: shelfHeaderIn 420ms var(--ease) both;
+    }
+
+    .screen-page.active .shelf:nth-of-type(1) .shelf-head { animation-delay: 240ms; }
+    .screen-page.active .shelf:nth-of-type(2) .shelf-head { animation-delay: 340ms; }
+    .screen-page.active .shelf:nth-of-type(3) .shelf-head { animation-delay: 440ms; }
+    .screen-page[data-screen="home"].active .shelf:nth-of-type(2) .shelf-head { animation-delay: 240ms; }
+    .screen-page[data-screen="home"].active .shelf:nth-of-type(3) .shelf-head { animation-delay: 340ms; }
+    .screen-page[data-screen="home"].active .shelf:nth-of-type(4) .shelf-head { animation-delay: 440ms; }
+
+    .screen-page.active .label-card {
+      animation: stickerIn 560ms var(--ease) both;
+    }
+
+    .screen-page.active .shelf:nth-of-type(1) .label-card:nth-child(1) { animation-delay: 320ms; }
+    .screen-page.active .shelf:nth-of-type(1) .label-card:nth-child(2) { animation-delay: 410ms; }
+    .screen-page.active .shelf:nth-of-type(2) .label-card { animation-delay: 500ms; }
+    .screen-page.active .shelf:nth-of-type(3) .label-card { animation-delay: 590ms; }
+    .screen-page[data-screen="home"].active .shelf:nth-of-type(2) .label-card:nth-child(1) { animation-delay: 320ms; }
+    .screen-page[data-screen="home"].active .shelf:nth-of-type(2) .label-card:nth-child(2) { animation-delay: 410ms; }
+    .screen-page[data-screen="home"].active .shelf:nth-of-type(3) .label-card { animation-delay: 500ms; }
+    .screen-page[data-screen="home"].active .shelf:nth-of-type(4) .label-card { animation-delay: 590ms; }
+
+    .screen-page[data-screen="add"].active .label-preview .label-card {
+      animation: printLabel 720ms var(--ease) 120ms both;
+    }
+
+    .screen-page[data-screen="detail"].active .folder {
+      animation: folderOpen 680ms var(--ease) 110ms both;
+    }
+
+    .screen-page[data-screen="report"].active .receipt {
+      animation: receiptDrop 620ms var(--ease) 120ms both;
+    }
+
+    .screen-page[data-screen="report"].active .receipt-bar span {
+      transform-origin: left center;
+      animation: barFill 740ms var(--ease) both;
+    }
+
+    .screen-page[data-screen="report"].active .receipt-line:nth-child(1) .receipt-bar span { animation-delay: 340ms; }
+    .screen-page[data-screen="report"].active .receipt-line:nth-child(2) .receipt-bar span { animation-delay: 440ms; }
+    .screen-page[data-screen="report"].active .receipt-line:nth-child(3) .receipt-bar span { animation-delay: 540ms; }
+    .screen-page[data-screen="report"].active .receipt-line:nth-child(4) .receipt-bar span { animation-delay: 640ms; }
+
+    .screen-page[data-screen="scan"].active .scan-card {
+      animation: scanCardIn 560ms var(--ease) 160ms both;
+    }
+
+    .screen-page[data-screen="empty"].active .label-card {
+      animation: firstLabelIn 760ms var(--ease) 140ms both;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .app-title {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.12;
+      font-weight: 850;
+    }
+
+    .app-sub {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .icon-actions {
+      display: flex;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .icon-btn {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(23, 107, 92, 0.16);
+      border-radius: 14px;
+      color: var(--brand);
+      background: rgba(255, 253, 247, 0.7);
+    }
+
+    svg {
+      display: block;
+    }
+
+    .hero-note,
+    .paper-card,
+    .label-card,
+    .assistant-note,
+    .receipt,
+    .folder {
+      position: relative;
+      border: 1px solid rgba(110, 91, 54, 0.14);
+      background: rgba(255, 253, 247, 0.88);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .hero-note::after,
+    .label-card::after,
+    .assistant-note::after,
+    .folder::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 24px;
+      height: 24px;
+      border-left: 1px solid rgba(110, 91, 54, 0.12);
+      border-bottom: 1px solid rgba(110, 91, 54, 0.12);
+      border-radius: 0 18px 0 14px;
+      background: var(--fold);
+    }
+
+    .hero-note {
+      min-height: 138px;
+      padding: 17px;
+      border-radius: 26px 26px 26px 10px;
+      background:
+        linear-gradient(135deg, rgba(255, 253, 247, 0.95), rgba(226, 241, 232, 0.9));
+    }
+
+    .hero-note .heat span {
+      transform-origin: left center;
+      animation: heatGrow 780ms var(--ease) both;
+    }
+
+    .hero-note .heat span:nth-child(1) { animation-delay: 300ms; }
+    .hero-note .heat span:nth-child(2) { animation-delay: 430ms; }
+    .hero-note .heat span:nth-child(3) { animation-delay: 560ms; }
+
+    .section-kicker {
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .hero-title {
+      margin: 7px 0 0;
+      font-size: 27px;
+      line-height: 1.16;
+      font-weight: 850;
+    }
+
+    .hero-copy {
+      max-width: 260px;
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.58;
+    }
+
+    .heat {
+      display: grid;
+      grid-template-columns: 7fr 2fr 1fr;
+      gap: 4px;
+      margin-top: 15px;
+    }
+
+    .heat span {
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    .heat span:nth-child(1) {
+      background: var(--fresh);
+    }
+
+    .heat span:nth-child(2) {
+      background: var(--warn);
+    }
+
+    .heat span:nth-child(3) {
+      background: var(--bad);
+    }
+
+    .assistant-note {
+      display: grid;
+      grid-template-columns: 38px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 78px;
+      margin: 14px 0;
+      padding: 13px;
+      border-color: rgba(23, 107, 92, 0.24);
+      border-radius: 22px 22px 22px 8px;
+      background: rgba(253, 248, 234, 0.96);
+      transform-origin: right bottom;
+    }
+
+    .assistant-note.compact {
+      grid-template-columns: 34px 1fr;
+      min-height: 66px;
+      margin: 0;
+      box-shadow: none;
+    }
+
+    .assistant-face {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(23, 107, 92, 0.24);
+      border-radius: 15px 15px 15px 6px;
+      background: var(--brand-soft);
+    }
+
+    .assistant-face::before,
+    .assistant-face::after {
+      content: "";
+      position: absolute;
+      top: 15px;
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--brand);
+    }
+
+    .assistant-face::before {
+      left: 11px;
+    }
+
+    .assistant-face::after {
+      right: 11px;
+    }
+
+    .assistant-title {
+      margin: 0;
+      color: var(--brand-dark);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .assistant-copy {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .tiny-pill {
+      padding: 7px 9px;
+      border-radius: 999px;
+      color: var(--brand);
+      background: rgba(23, 107, 92, 0.1);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr 46px;
+      gap: 10px;
+      margin: 14px 0 16px;
+    }
+
+    .search-box,
+    .filter-box {
+      min-height: 46px;
+      border: 1px solid rgba(23, 107, 92, 0.14);
+      border-radius: 16px;
+      background: rgba(255, 253, 247, 0.72);
+      color: var(--muted);
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 14px;
+      font-size: 13px;
+    }
+
+    .filter-box {
+      display: grid;
+      place-items: center;
+      color: var(--brand);
+    }
+
+    .shelf {
+      margin: 18px 0 0;
+    }
+
+    .shelf-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 9px;
+      padding: 0 2px;
+    }
+
+    .shelf-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 15px;
+      font-weight: 850;
+    }
+
+    .shelf-title::before {
+      content: "";
+      width: 25px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--shelf-color);
+    }
+
+    .shelf-head small {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .shelf-track {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+
+    .shelf-track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .label-card {
+      flex: 0 0 186px;
+      min-height: 132px;
+      overflow: hidden;
+      padding: 12px;
+      border-radius: 22px 22px 22px 8px;
+      background: var(--label-bg, rgba(255, 253, 247, 0.9));
+      transform-origin: 38% 16%;
+      transition:
+        transform 260ms var(--ease),
+        box-shadow 260ms var(--ease),
+        filter 260ms var(--ease);
+    }
+
+    .label-card:hover {
+      transform: translateY(-3px) rotate(-0.8deg);
+      box-shadow: 0 20px 38px rgba(55, 42, 18, 0.14);
+    }
+
+    .label-card.tapped {
+      animation: labelTap 360ms var(--ease) both;
+    }
+
+    .label-card.old {
+      filter: saturate(0.55);
+      opacity: 0.82;
+    }
+
+    .label-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .glyph-wrap {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      color: var(--cat);
+      background: color-mix(in srgb, var(--cat) 12%, white);
+    }
+
+    .glyph-wrap svg {
+      width: 25px;
+      height: 25px;
+    }
+
+    .days {
+      padding: 6px 8px;
+      border-radius: 999px;
+      color: var(--status);
+      background: color-mix(in srgb, var(--status) 13%, white);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .item-name {
+      margin: 12px 0 0;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 850;
+    }
+
+    .item-meta {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .freshness {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      margin-top: 13px;
+    }
+
+    .freshness span {
+      flex: 1;
+      height: 5px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--status) 22%, white);
+    }
+
+    .freshness span.on {
+      background: var(--status);
+      transform-origin: left center;
+      animation: tickGrow 520ms var(--ease) both;
+    }
+
+    .freshness span.on:nth-child(1) { animation-delay: 520ms; }
+    .freshness span.on:nth-child(2) { animation-delay: 580ms; }
+    .freshness span.on:nth-child(3) { animation-delay: 640ms; }
+    .freshness span.on:nth-child(4) { animation-delay: 700ms; }
+
+    .category-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin: 14px 0 6px;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+
+    .category-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 11px;
+      border: 1px solid rgba(110, 91, 54, 0.12);
+      border-radius: 999px;
+      color: var(--cat);
+      background: rgba(255, 253, 247, 0.74);
+      font-size: 12px;
+      font-weight: 780;
+      white-space: nowrap;
+    }
+
+    .category-chip.active {
+      color: white;
+      background: var(--cat);
+      border-color: var(--cat);
+    }
+
+    .category-chip svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .floating-say {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      z-index: 12;
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      min-height: 64px;
+      padding: 10px 14px;
+      border: 1px solid rgba(23, 107, 92, 0.22);
+      border-radius: 23px;
+      color: var(--brand-dark);
+      background: rgba(255, 253, 247, 0.94);
+      box-shadow: 0 18px 46px rgba(62, 48, 24, 0.17);
+      cursor: pointer;
+      transform-origin: bottom center;
+      transition:
+        transform 280ms var(--ease),
+        opacity 220ms var(--ease),
+        border-radius 280ms var(--ease);
+      animation: handleBreathe 4.8s var(--ease) infinite;
+    }
+
+    .floating-say:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .floating-say.sheet-open {
+      opacity: 0;
+      transform: translateY(18px) scale(0.92);
+      pointer-events: none;
+      animation: none;
+    }
+
+    .say-icon {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 14px;
+      color: white;
+      background: var(--brand);
+    }
+
+    .say-title {
+      display: block;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .say-copy {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .say-grip {
+      width: 24px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(23, 107, 92, 0.34);
+    }
+
+    .label-preview {
+      transform: rotate(-1.2deg);
+      margin: 4px 7px 18px;
+    }
+
+    .form-block {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .input,
+    .date-box {
+      min-height: 48px;
+      border: 1px solid rgba(110, 91, 54, 0.14);
+      border-radius: 16px;
+      padding: 0 13px;
+      background: rgba(255, 253, 247, 0.82);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+
+    .date-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .reminders {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .reminder {
+      padding: 8px 10px;
+      border-radius: 999px;
+      color: var(--brand);
+      background: rgba(23, 107, 92, 0.1);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .primary {
+      min-height: 50px;
+      border: 0;
+      border-radius: 17px;
+      color: white;
+      background: var(--brand);
+      font-weight: 850;
+      cursor: pointer;
+      transition:
+        transform 220ms var(--ease),
+        filter 220ms var(--ease);
+    }
+
+    .secondary {
+      min-height: 44px;
+      border: 1px solid rgba(23, 107, 92, 0.18);
+      border-radius: 16px;
+      color: var(--brand);
+      background: rgba(23, 107, 92, 0.08);
+      font-weight: 820;
+      cursor: pointer;
+      transition:
+        transform 220ms var(--ease),
+        background 220ms var(--ease);
+    }
+
+    .primary:active,
+    .secondary:active,
+    .scan-actions button:active {
+      transform: translateY(1px) scale(0.98);
+    }
+
+    .primary.success-pop {
+      animation: successPop 520ms var(--ease) both;
+    }
+
+    .folder {
+      margin-top: 8px;
+      border-radius: 26px 26px 26px 10px;
+      background:
+        linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 246, 234, 0.9));
+      overflow: hidden;
+      transform-origin: top left;
+    }
+
+    .folder-tab {
+      width: 142px;
+      height: 34px;
+      border-right: 1px solid rgba(110, 91, 54, 0.12);
+      border-bottom: 1px solid rgba(110, 91, 54, 0.12);
+      border-radius: 0 0 18px 0;
+      background: var(--fold);
+    }
+
+    .folder-body {
+      padding: 16px;
+    }
+
+    .big-days {
+      margin: 8px 0 0;
+      color: var(--urgent);
+      font-size: 44px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      margin: 16px 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .timeline-line {
+      height: 8px;
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg, var(--fresh) 0 54%, var(--warn) 54% 79%, var(--urgent) 79% 100%);
+    }
+
+    .info-list {
+      display: grid;
+      gap: 0;
+      margin-top: 10px;
+      border-top: 1px solid rgba(110, 91, 54, 0.12);
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(110, 91, 54, 0.12);
+      font-size: 13px;
+    }
+
+    .info-row span:first-child {
+      color: var(--muted);
+    }
+
+    .info-row span:last-child {
+      font-weight: 760;
+    }
+
+    .qty-dots {
+      display: flex;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .qty-dots span {
+      width: 28px;
+      height: 22px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--brand) 38%, white);
+      background: rgba(23, 107, 92, 0.12);
+    }
+
+    .qty-dots span.used {
+      background: var(--brand);
+    }
+
+    .receipt {
+      margin-top: 8px;
+      padding: 18px;
+      border-radius: 8px 8px 22px 22px;
+      background: rgba(255, 253, 247, 0.92);
+    }
+
+    .receipt::before,
+    .receipt::after {
+      content: "";
+      position: absolute;
+      top: -1px;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--door);
+    }
+
+    .receipt::before {
+      left: 18px;
+    }
+
+    .receipt::after {
+      right: 18px;
+    }
+
+    .receipt-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 13px;
+      border-bottom: 1px dashed rgba(110, 91, 54, 0.28);
+    }
+
+    .receipt-title {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 880;
+    }
+
+    .rate {
+      color: var(--brand);
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 900;
+      animation: numberSettle 620ms var(--ease) 420ms both;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 15px 0;
+    }
+
+    .metric {
+      padding: 10px;
+      border-radius: 16px;
+      background: var(--surface-soft);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--metric-color);
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .receipt-lines {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .receipt-line {
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .receipt-bar {
+      height: 7px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--line-color) 13%, white);
+      overflow: hidden;
+    }
+
+    .receipt-bar span {
+      display: block;
+      width: var(--w);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--line-color);
+    }
+
+    .scan-card {
+      padding: 16px;
+      border: 1px solid rgba(110, 91, 54, 0.14);
+      border-radius: 26px;
+      background: rgba(255, 253, 247, 0.9);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .scan-focus {
+      margin: 16px 0;
+      padding: 15px;
+      border: 1px solid rgba(216, 92, 42, 0.22);
+      border-radius: 22px;
+      background: rgba(216, 92, 42, 0.08);
+    }
+
+    .scan-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .scan-actions button {
+      min-height: 43px;
+      border: 1px solid rgba(110, 91, 54, 0.14);
+      border-radius: 15px;
+      color: var(--ink);
+      background: rgba(255, 253, 247, 0.82);
+      font-size: 12px;
+      font-weight: 820;
+      transition:
+        transform 220ms var(--ease),
+        background 220ms var(--ease),
+        color 220ms var(--ease),
+        border-color 220ms var(--ease);
+    }
+
+    .scan-actions button.selected {
+      color: white;
+      border-color: var(--brand);
+      background: var(--brand);
+      animation: successPop 420ms var(--ease) both;
+    }
+
+    .progress-rail {
+      height: 8px;
+      margin: 16px 0 0;
+      border-radius: 999px;
+      background: rgba(23, 107, 92, 0.12);
+      overflow: hidden;
+    }
+
+    .progress-rail span {
+      display: block;
+      width: var(--scan-progress, 42%);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--brand);
+      transition: width 520ms var(--ease);
+    }
+
+    .bottom-sheet {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      z-index: 18;
+      border: 1px solid rgba(23, 107, 92, 0.22);
+      border-radius: 30px;
+      background: rgba(255, 253, 247, 0.97);
+      box-shadow: 0 24px 70px rgba(31, 30, 22, 0.24);
+      transform: translateY(112%);
+      opacity: 0;
+      pointer-events: none;
+      transition:
+        transform 420ms var(--ease),
+        opacity 260ms var(--ease);
+    }
+
+    .bottom-sheet.open {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .bottom-sheet.open .assistant-note {
+      animation: noteArrive 420ms var(--ease) 120ms both;
+    }
+
+    .bottom-sheet.open .sheet-title,
+    .bottom-sheet.open .sheet-copy,
+    .bottom-sheet.open .understand,
+    .bottom-sheet.open .sheet-actions {
+      animation: pageLift 440ms var(--ease) both;
+    }
+
+    .bottom-sheet.open .sheet-title { animation-delay: 160ms; }
+    .bottom-sheet.open .sheet-copy { animation-delay: 220ms; }
+    .bottom-sheet.open .understand { animation-delay: 320ms; }
+    .bottom-sheet.open .sheet-actions { animation-delay: 420ms; }
+
+    .sheet-grip {
+      width: 44px;
+      height: 4px;
+      margin: 12px auto 4px;
+      border-radius: 999px;
+      background: rgba(23, 107, 92, 0.22);
+    }
+
+    .sheet-body {
+      padding: 14px 18px 18px;
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: 23px;
+      font-weight: 880;
+    }
+
+    .sheet-copy {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .wave {
+      display: flex;
+      align-items: end;
+      gap: 5px;
+      height: 56px;
+      margin: 18px 0 14px;
+    }
+
+    .wave span {
+      width: 9px;
+      border-radius: 999px;
+      background: var(--brand);
+      animation: wave 920ms var(--ease) infinite;
+    }
+
+    .wave span:nth-child(1) { height: 18px; animation-delay: 0ms; }
+    .wave span:nth-child(2) { height: 36px; animation-delay: 100ms; }
+    .wave span:nth-child(3) { height: 52px; animation-delay: 200ms; }
+    .wave span:nth-child(4) { height: 31px; animation-delay: 300ms; }
+    .wave span:nth-child(5) { height: 44px; animation-delay: 400ms; }
+    .wave span:nth-child(6) { height: 24px; animation-delay: 500ms; }
+
+    .understand {
+      margin-top: 15px;
+      padding: 14px;
+      border: 1px solid rgba(23, 107, 92, 0.16);
+      border-radius: 21px;
+      background: linear-gradient(180deg, rgba(220, 238, 230, 0.66), rgba(255, 253, 247, 0.82));
+    }
+
+    .understand-row {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 12px;
+      padding: 9px 0;
+      border-top: 1px solid rgba(23, 107, 92, 0.12);
+      font-size: 13px;
+    }
+
+    .understand-row:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .understand-row span:first-child {
+      color: var(--muted);
+    }
+
+    .understand-row span:last-child {
+      font-weight: 800;
+    }
+
+    .sheet-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .dim {
+      position: absolute;
+      inset: 0;
+      z-index: 16;
+      background: rgba(24, 35, 31, 0.18);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 240ms var(--ease);
+    }
+
+    .dim.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .duo-fill {
+      fill: currentColor;
+      opacity: 0.13;
+      stroke: none;
+    }
+
+    @keyframes floatNote {
+      0%, 100% { transform: translateY(0) rotate(0.4deg); }
+      50% { transform: translateY(-4px) rotate(-0.6deg); }
+    }
+
+    @keyframes pageLift {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes noteArrive {
+      0% { opacity: 0; transform: translateY(14px) rotate(-2deg) scale(0.96); }
+      70% { opacity: 1; transform: translateY(-2px) rotate(0.8deg) scale(1.01); }
+      100% { opacity: 1; transform: translateY(0) rotate(0.4deg) scale(1); }
+    }
+
+    @keyframes shelfHeaderIn {
+      from { opacity: 0; transform: translateX(-16px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes stickerIn {
+      0% { opacity: 0; transform: translateY(22px) rotate(-4deg) scale(0.94); }
+      72% { opacity: 1; transform: translateY(-2px) rotate(1deg) scale(1.015); }
+      100% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    }
+
+    @keyframes printLabel {
+      0% { opacity: 0; transform: translateY(-42px) rotate(-3deg) scaleY(0.72); clip-path: inset(0 0 78% 0 round 22px); }
+      62% { opacity: 1; transform: translateY(4px) rotate(-1.2deg) scaleY(1); clip-path: inset(0 0 0 0 round 22px); }
+      100% { opacity: 1; transform: translateY(0) rotate(-1.2deg) scaleY(1); clip-path: inset(0 0 0 0 round 22px); }
+    }
+
+    @keyframes folderOpen {
+      0% { opacity: 0; transform: translateY(16px) rotateX(9deg); }
+      68% { opacity: 1; transform: translateY(-2px) rotateX(-2deg); }
+      100% { opacity: 1; transform: translateY(0) rotateX(0); }
+    }
+
+    @keyframes receiptDrop {
+      0% { opacity: 0; transform: translateY(-18px) scaleY(0.96); }
+      70% { opacity: 1; transform: translateY(3px) scaleY(1.01); }
+      100% { opacity: 1; transform: translateY(0) scaleY(1); }
+    }
+
+    @keyframes barFill {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+
+    @keyframes scanCardIn {
+      0% { opacity: 0; transform: translateY(18px) scale(0.96); }
+      74% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes firstLabelIn {
+      0% { opacity: 0; transform: translateY(24px) rotate(-5deg) scale(0.9); }
+      60% { opacity: 0.78; transform: translateY(-3px) rotate(1.2deg) scale(1.02); }
+      100% { opacity: 0.78; transform: translateY(0) rotate(0) scale(1); }
+    }
+
+    @keyframes heatGrow {
+      from { transform: scaleX(0); opacity: 0.4; }
+      to { transform: scaleX(1); opacity: 1; }
+    }
+
+    @keyframes tickGrow {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+
+    @keyframes labelTap {
+      0% { transform: translateY(0) rotate(0) scale(1); }
+      44% { transform: translateY(2px) rotate(-0.8deg) scale(0.985); }
+      100% { transform: translateY(0) rotate(0) scale(1); }
+    }
+
+    @keyframes handleBreathe {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    @keyframes successPop {
+      0% { transform: scale(1); }
+      42% { transform: scale(0.96); filter: saturate(1.08); }
+      100% { transform: scale(1); filter: saturate(1); }
+    }
+
+    @keyframes numberSettle {
+      0% { opacity: 0; transform: translateY(10px) scale(0.92); }
+      70% { opacity: 1; transform: translateY(-2px) scale(1.04); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes tabSweep {
+      0% { opacity: 0; transform: translateX(-120%); }
+      20% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(120%); }
+    }
+
+    @keyframes scanSweep {
+      from { transform: translateX(-118%); }
+      to { transform: translateX(118%); }
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.62); opacity: 0.58; }
+      50% { transform: scaleY(1); opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .page {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        padding: 26px 0;
+      }
+
+      .panel {
+        align-self: auto;
+      }
+
+      h1 {
+        max-width: 16ch;
+      }
+
+      .stage {
+        min-height: 800px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .page {
+        width: min(100vw - 18px, 430px);
+      }
+
+      .tabs {
+        grid-template-columns: 1fr;
+      }
+
+      .background-options {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .icon-variants {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .phone {
+        height: 760px;
+        border-width: 7px;
+        border-radius: 34px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="i-milk" viewBox="0 0 24 24">
+      <path class="duo-fill" d="M7 8h10v11.2c0 .7-.5 1.2-1.2 1.2H8.2c-.7 0-1.2-.5-1.2-1.2V8Z"></path>
+      <path d="M8 3.8h8l1.7 4.1v11.3c0 .8-.6 1.4-1.4 1.4H7.7c-.8 0-1.4-.6-1.4-1.4V7.9L8 3.8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+      <path d="M6.7 8h11M9 4l-1.2 4M15 4l1.2 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+      <path d="M9.3 11.2h5.4v4.2H9.3z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"></path>
+    </symbol>
+    <symbol id="i-berry" viewBox="0 0 24 24">
+      <path class="duo-fill" d="M12 7.5c4.1 0 6.5 2.5 5.9 6.1-.5 3.1-3.5 5.9-5.9 7.3-2.4-1.4-5.4-4.2-5.9-7.3-.6-3.6 1.8-6.1 5.9-6.1Z"></path>
+      <path d="M12 7.3c4.2 0 6.7 2.6 6 6.3-.5 3-3.5 5.8-6 7.2-2.5-1.4-5.5-4.2-6-7.2-.7-3.7 1.8-6.3 6-6.3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+      <path d="M12 7.1c-.2-1.5.3-2.9 1.5-4M12 7.1c-1.2-1-2.5-1.4-4-1.1M12 7.1c1.2-1 2.7-1.3 4.2-.8M8.9 4.4c1.5.2 2.5 1.1 3.1 2.7M15.8 4.5c-1.6.1-2.7 1-3.8 2.6" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path d="M9.5 12.2h.1M12 14h.1M14.6 12.4h.1M10.7 16.6h.1M13.9 17h.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+    </symbol>
+    <symbol id="i-mask" viewBox="0 0 24 24">
+      <path class="duo-fill" d="M7.2 4.3h9.6c.8 0 1.5.7 1.5 1.5v12.4c0 .8-.7 1.5-1.5 1.5H7.2c-.8 0-1.5-.7-1.5-1.5V5.8c0-.8.7-1.5 1.5-1.5Z"></path>
+      <path d="M7.4 3.8h9.2c.9 0 1.7.8 1.7 1.7v13c0 .9-.8 1.7-1.7 1.7H7.4c-.9 0-1.7-.8-1.7-1.7v-13c0-.9.8-1.7 1.7-1.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+      <path d="M8.6 7.3h6.8M8.6 16.8h6.8" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"></path>
+      <path d="M12 9.1c1.3 1.3 2 2.3 2 3.4a2 2 0 0 1-4 0c0-1.1.7-2.1 2-3.4Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"></path>
+    </symbol>
+    <symbol id="i-bowl" viewBox="0 0 24 24">
+      <path class="duo-fill" d="M5.4 11.2h13.2c-.2 4.5-2.8 7.4-6.6 7.4s-6.4-2.9-6.6-7.4Z"></path>
+      <path d="M5 11.1h14c-.2 4.7-2.9 7.6-7 7.6s-6.8-2.9-7-7.6Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+      <path d="M4 20h16M8.6 7.9c-.7-.8-.7-1.5 0-2.3M12 7.9c-.7-.8-.7-1.5 0-2.3M15.4 7.9c-.7-.8-.7-1.5 0-2.3" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"></path>
+    </symbol>
+    <symbol id="i-spray" viewBox="0 0 24 24">
+      <path class="duo-fill" d="M9 10.4h7.4v8.3c0 .8-.7 1.5-1.5 1.5h-4.4c-.8 0-1.5-.7-1.5-1.5v-8.3Z"></path>
+      <path d="M8.8 10.2h7.6v8.5c0 .8-.7 1.5-1.5 1.5h-4.6c-.8 0-1.5-.7-1.5-1.5v-8.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+      <path d="M10 10.2V7.8h5.2v2.4M10.9 5.4h5.9M14.2 5.4v2.4M17.6 6.2h2.2M18 9l1.9.6M18 3.7l1.9-.6M10.7 14h3.8" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+    <symbol id="i-pill" viewBox="0 0 24 24">
+      <path class="duo-fill" d="M7.3 14.9 14.9 7.3a3.2 3.2 0 0 1 4.5 4.5l-7.6 7.6a3.2 3.2 0 1 1-4.5-4.5Z"></path>
+      <path d="M6.9 14.7 14.7 6.9a3.5 3.5 0 1 1 5 5l-7.8 7.8a3.5 3.5 0 0 1-5-5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+      <path d="m11 10.6 4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+    </symbol>
+    <symbol id="i-box" viewBox="0 0 24 24">
+      <path class="duo-fill" d="M4.8 8.2 12 4.3l7.2 3.9v7.7L12 19.8l-7.2-3.9V8.2Z"></path>
+      <path d="M4.7 8.1 12 4.2l7.3 3.9v7.8L12 19.8l-7.3-3.9V8.1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+      <path d="m4.9 8.3 7.1 3.9 7.1-3.9M12 12.2v7.2M8.3 6.1l7.2 3.9" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24">
+      <path d="M4 19V5M4 19h16M8 16v-5M12 16V7M16 16V9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+    <symbol id="i-search" viewBox="0 0 24 24">
+      <path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM20 20l-3.4-3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+    </symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24">
+      <path d="M5 7h14M8 12h8M10 17h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+    </symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24">
+      <path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3ZM5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+  </svg>
+
+  <main class="page">
+    <section class="panel">
+      <div class="kicker">及时用 UI 原型</div>
+      <h1>冰箱门上的保鲜墙</h1>
+      <p class="intro">
+        这版原型把应用从普通清单改成一面保鲜墙：物品是保鲜标签，小用是会贴到上下文里的智能便签，统计变成少浪费报告。
+      </p>
+
+      <div class="tabs" aria-label="原型页面切换">
+        <button class="tab active" type="button" data-page="home"><strong>保鲜墙首页</strong><span>磁吸贴纸、热力层、时间货架</span></button>
+        <button class="tab" type="button" data-page="add"><strong>贴标签流程</strong><span>标签打印机式新增</span></button>
+        <button class="tab" type="button" data-page="detail"><strong>物品档案袋</strong><span>大标签、日期线、数量刻度</span></button>
+        <button class="tab" type="button" data-page="report"><strong>少浪费报告</strong><span>月度收据式数据</span></button>
+        <button class="tab" type="button" data-page="scan"><strong>小用巡视</strong><span>逐项盘点，不做聊天页</span></button>
+        <button class="tab" type="button" data-page="empty"><strong>空状态</strong><span>第一张半透明标签</span></button>
+      </div>
+
+      <div class="background-lab" aria-label="背景方向切换">
+        <div class="background-lab-head">
+          <div>
+            <p class="background-lab-title">背景方向</p>
+            <p class="background-lab-copy">点选后看右侧手机预览</p>
+          </div>
+        </div>
+        <div class="background-options">
+          <button class="bg-option active" type="button" data-bg="mist" data-caption="冷雾面板：更轻、更干净，适合让标签和今日看板成为绝对主角。" style="--swatch: linear-gradient(135deg, #eff6f2, #ffffff 44%, #efe6d4)">
+            <i class="bg-swatch"></i>
+            <span>冷雾面</span>
+          </button>
+          <button class="bg-option" type="button" data-bg="magnet" data-caption="磁吸保鲜墙：保留冰箱门的生活感，但取消中缝，用侧边光和低对比横线做空间暗示。" style="--swatch: linear-gradient(135deg, #f3eee2, #edf4ef 58%, #fffdf7)">
+            <i class="bg-swatch"></i>
+            <span>磁吸墙</span>
+          </button>
+          <button class="bg-option" type="button" data-bg="paper" data-caption="纸面贴板：偏手账和便签系统，亲和力强，但冰箱感会弱一些。" style="--swatch: linear-gradient(135deg, #f8f1df 0 22%, #fff8e8 22% 36%, #f8f1df 36% 100%)">
+            <i class="bg-swatch"></i>
+            <span>纸贴板</span>
+          </button>
+          <button class="bg-option" type="button" data-bg="tile" data-caption="厨房浅砖：空间感最明确，生活场景强；需要注意别让网格显得太硬。" style="--swatch: linear-gradient(135deg, #f7f5ed, #edf4ef)">
+            <i class="bg-swatch"></i>
+            <span>厨房砖</span>
+          </button>
+          <button class="bg-option" type="button" data-bg="shelf" data-caption="收纳层板：把物品分层放置的概念讲得最直接，适合强调时间货架。" style="--swatch: linear-gradient(180deg, #f4eee0 0 34%, #d8c8a8 35%, #f8f3e7 36% 67%, #d8c8a8 68%, #ebe1cd 69%)">
+            <i class="bg-swatch"></i>
+            <span>层板</span>
+          </button>
+        </div>
+        <p id="backgroundCaption" class="background-caption">冷雾面板：更轻、更干净，适合让标签和今日看板成为绝对主角。</p>
+      </div>
+
+      <div class="icon-lab" aria-label="应用图标预览">
+        <div class="icon-lab-head">
+          <p class="icon-lab-title">应用图标</p>
+          <p class="icon-lab-copy">绿色方块分别替换成分类符号，保留暖黄色小用浮层，方便比较哪个分类更适合作为主图标。</p>
+        </div>
+        <div class="icon-variants">
+          <div class="icon-variant">
+            <img class="icon-preview" src="app-icon-food.svg" alt="食品版应用图标">
+            <span>食品</span>
+          </div>
+          <div class="icon-variant">
+            <img class="icon-preview" src="app-icon-drink.svg" alt="饮品版应用图标">
+            <span>饮品</span>
+          </div>
+          <div class="icon-variant">
+            <img class="icon-preview" src="app-icon-daily.svg" alt="日用版应用图标">
+            <span>日用</span>
+          </div>
+          <div class="icon-variant">
+            <img class="icon-preview" src="app-icon-medicine.svg" alt="药品版应用图标">
+            <span>药品</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note-line">首页采用冷雾保鲜面，不画对开门中缝，用贴纸、磁吸标签、分层收纳制造记忆点。</div>
+        <div class="note-line">时间不只靠数字表达，而通过标签材质、刻度长度、饱和度变化体现轻重缓急。</div>
+        <div class="note-line">小用不做人形头像，它是一张能移动、能展开、能确认操作的便签。</div>
+      </div>
+    </section>
+
+    <section class="stage" aria-label="手机原型预览">
+      <div class="phone-shadow"></div>
+      <div class="phone">
+        <div class="screen" data-bg="mist">
+          <section class="screen-page active" data-screen="home">
+            <header class="topbar">
+              <div>
+                <h2 class="app-title">及时用</h2>
+                <p class="app-sub">24 件物品贴在保鲜墙上</p>
+              </div>
+              <div class="icon-actions">
+                <span class="icon-btn"><svg width="19" height="19"><use href="#i-chart"></use></svg></span>
+                <span class="icon-btn"><svg width="19" height="19"><use href="#i-filter"></use></svg></span>
+              </div>
+            </header>
+
+            <section class="hero-note">
+              <div class="section-kicker">今日保鲜看板</div>
+              <h3 class="hero-title">优先处理 3 件</h3>
+              <p class="hero-copy">牛奶今天到期，草莓和面膜也快到提醒线了。</p>
+              <div class="heat" aria-label="保鲜热力层"><span></span><span></span><span></span></div>
+            </section>
+
+            <aside class="assistant-note">
+              <div class="assistant-face"></div>
+              <div>
+                <p class="assistant-title">小用</p>
+                <p class="assistant-copy">我看过了，今天先处理牛奶最稳。</p>
+              </div>
+              <span class="tiny-pill">巡视过</span>
+            </aside>
+
+            <div class="search-row">
+              <div class="search-box"><svg width="18" height="18"><use href="#i-search"></use></svg>搜索名称、备注</div>
+              <div class="filter-box"><svg width="20" height="20"><use href="#i-filter"></use></svg></div>
+            </div>
+
+            <div class="category-strip">
+              <span class="category-chip active" style="--cat: var(--brand)">全部</span>
+              <span class="category-chip" style="--cat: var(--urgent)"><svg><use href="#i-bowl"></use></svg>食品</span>
+              <span class="category-chip" style="--cat: var(--blue)"><svg><use href="#i-milk"></use></svg>饮品</span>
+              <span class="category-chip" style="--cat: var(--daily)"><svg><use href="#i-spray"></use></svg>日用</span>
+              <span class="category-chip" style="--cat: var(--med)"><svg><use href="#i-pill"></use></svg>药品</span>
+            </div>
+
+            <section class="shelf" style="--shelf-color: var(--bad)">
+              <div class="shelf-head"><div class="shelf-title">今天</div><small>2 件</small></div>
+              <div class="shelf-track">
+                <article class="label-card" style="--cat: var(--blue); --status: var(--bad); --label-bg: rgba(255, 246, 238, 0.94)">
+                  <div class="label-top">
+                    <div class="glyph-wrap"><svg><use href="#i-milk"></use></svg></div>
+                    <span class="days">今天到期</span>
+                  </div>
+                  <h4 class="item-name">牛奶</h4>
+                  <p class="item-meta">冷藏第二层 · x2</p>
+                  <div class="freshness"><span class="on"></span><span class="on"></span><span></span><span></span></div>
+                </article>
+                <article class="label-card" style="--cat: var(--urgent); --status: var(--warn); --label-bg: rgba(255, 250, 239, 0.94)">
+                  <div class="label-top">
+                    <div class="glyph-wrap"><svg><use href="#i-berry"></use></svg></div>
+                    <span class="days">剩 1 天</span>
+                  </div>
+                  <h4 class="item-name">草莓</h4>
+                  <p class="item-meta">已开封 · x1</p>
+                  <div class="freshness"><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div>
+                </article>
+              </div>
+            </section>
+
+            <section class="shelf" style="--shelf-color: var(--warn)">
+              <div class="shelf-head"><div class="shelf-title">3 天内</div><small>1 件</small></div>
+              <div class="shelf-track">
+                <article class="label-card" style="--cat: var(--cos); --status: var(--warn)">
+                  <div class="label-top">
+                    <div class="glyph-wrap"><svg><use href="#i-mask"></use></svg></div>
+                    <span class="days">剩 3 天</span>
+                  </div>
+                  <h4 class="item-name">补水面膜</h4>
+                  <p class="item-meta">浴室柜 · x4</p>
+                  <div class="freshness"><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div>
+                </article>
+              </div>
+            </section>
+
+            <section class="shelf" style="--shelf-color: var(--fresh)">
+              <div class="shelf-head"><div class="shelf-title">本周</div><small>5 件</small></div>
+              <div class="shelf-track">
+                <article class="label-card" style="--cat: var(--med); --status: var(--fresh)">
+                  <div class="label-top">
+                    <div class="glyph-wrap"><svg><use href="#i-pill"></use></svg></div>
+                    <span class="days">剩 6 天</span>
+                  </div>
+                  <h4 class="item-name">维生素</h4>
+                  <p class="item-meta">餐边柜 · x1</p>
+                  <div class="freshness"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></div>
+                </article>
+              </div>
+            </section>
+          </section>
+
+          <section class="screen-page" data-screen="add">
+            <header class="topbar">
+              <div>
+                <h2 class="app-title">贴一张保鲜标签</h2>
+                <p class="app-sub">像标签打印机一样生成记录</p>
+              </div>
+            </header>
+
+            <div class="label-preview">
+              <article class="label-card" style="--cat: var(--blue); --status: var(--fresh); --label-bg: rgba(255, 253, 247, 0.96)">
+                <div class="label-top">
+                  <div class="glyph-wrap"><svg><use href="#i-milk"></use></svg></div>
+                  <span class="days">剩 14 天</span>
+                </div>
+                <h4 class="item-name">鲜牛奶</h4>
+                <p class="item-meta">饮品 · 冷藏第二层 · x1</p>
+                <div class="freshness"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></div>
+              </article>
+            </div>
+
+            <aside class="assistant-note compact">
+              <div class="assistant-face"></div>
+              <div>
+                <p class="assistant-title">小用</p>
+                <p class="assistant-copy">这个到期日我会提前 7 天、3 天、1 天提醒。</p>
+              </div>
+            </aside>
+
+            <div class="form-block">
+              <div class="field"><label>物品名称</label><div class="input">鲜牛奶</div></div>
+              <div class="field">
+                <label>分类</label>
+                <div class="category-strip" style="margin:0">
+                  <span class="category-chip" style="--cat: var(--urgent)"><svg><use href="#i-bowl"></use></svg>食品</span>
+                  <span class="category-chip active" style="--cat: var(--blue)"><svg><use href="#i-milk"></use></svg>饮品</span>
+                  <span class="category-chip" style="--cat: var(--daily)"><svg><use href="#i-spray"></use></svg>日用</span>
+                </div>
+              </div>
+              <div class="date-grid">
+                <div class="field"><label>购买日期</label><div class="date-box">今天</div></div>
+                <div class="field"><label>到期日期</label><div class="date-box">06月21日</div></div>
+              </div>
+              <div class="field"><label>提醒节奏</label><div class="reminders"><span class="reminder">提前 7 天</span><span class="reminder">提前 3 天</span><span class="reminder">提前 1 天</span></div></div>
+              <button class="primary" type="button">贴上标签</button>
+            </div>
+          </section>
+
+          <section class="screen-page" data-screen="detail">
+            <header class="topbar">
+              <div>
+                <h2 class="app-title">物品档案袋</h2>
+                <p class="app-sub">打开一张完整保鲜标签</p>
+              </div>
+            </header>
+
+            <section class="folder">
+              <div class="folder-tab"></div>
+              <div class="folder-body">
+                <div class="label-top">
+                  <div class="glyph-wrap" style="--cat: var(--blue)"><svg><use href="#i-milk"></use></svg></div>
+                  <span class="days" style="--status: var(--bad)">今天到期</span>
+                </div>
+                <h3 class="hero-title">牛奶</h3>
+                <p class="item-meta">饮品 · 冷藏第二层</p>
+                <div class="big-days">0 天</div>
+                <div class="timeline"><span>06月01日</span><div class="timeline-line"></div><span>06月07日</span></div>
+                <div class="info-list">
+                  <div class="info-row"><span>购买日期</span><span>2026年06月01日</span></div>
+                  <div class="info-row"><span>到期日期</span><span>2026年06月07日</span></div>
+                  <div class="info-row"><span>提醒</span><span>提前7天、3天、1天</span></div>
+                  <div class="info-row"><span>备注</span><span>冷藏第二层，开封后尽快喝完</span></div>
+                </div>
+                <p class="assistant-title" style="margin-top:16px">已用 1 / 2</p>
+                <div class="qty-dots"><span class="used"></span><span></span></div>
+              </div>
+            </section>
+
+            <div class="sheet-actions">
+              <button class="primary" type="button">用掉 1 件</button>
+              <button class="secondary" type="button">标记处理</button>
+            </div>
+          </section>
+
+          <section class="screen-page" data-screen="report">
+            <header class="topbar">
+              <div>
+                <h2 class="app-title">少浪费报告</h2>
+                <p class="app-sub">2026年06月</p>
+              </div>
+            </header>
+
+            <section class="receipt">
+              <div class="receipt-head">
+                <div>
+                  <h3 class="receipt-title">本月情况稳定</h3>
+                  <p class="item-meta">饮品类临期较集中，下次少量多次补货。</p>
+                </div>
+                <div class="rate">14%</div>
+              </div>
+              <div class="metric-row">
+                <div class="metric" style="--metric-color: var(--fresh)"><b>12</b><span>用掉</span></div>
+                <div class="metric" style="--metric-color: var(--bad)"><b>2</b><span>浪费</span></div>
+                <div class="metric" style="--metric-color: var(--brand)"><b>24</b><span>库存</span></div>
+              </div>
+              <div class="receipt-lines">
+                <div class="receipt-line" style="--line-color: var(--blue); --w: 78%"><span>饮品</span><div class="receipt-bar"><span></span></div><b>7</b></div>
+                <div class="receipt-line" style="--line-color: var(--urgent); --w: 54%"><span>食品</span><div class="receipt-bar"><span></span></div><b>5</b></div>
+                <div class="receipt-line" style="--line-color: var(--cos); --w: 34%"><span>美妆</span><div class="receipt-bar"><span></span></div><b>3</b></div>
+                <div class="receipt-line" style="--line-color: var(--med); --w: 26%"><span>药品</span><div class="receipt-bar"><span></span></div><b>2</b></div>
+              </div>
+            </section>
+          </section>
+
+          <section class="screen-page" data-screen="scan">
+            <header class="topbar">
+              <div>
+                <h2 class="app-title">小用巡视</h2>
+                <p class="app-sub">逐项盘点临期物品</p>
+              </div>
+            </header>
+
+            <aside class="assistant-note compact">
+              <div class="assistant-face"></div>
+              <div>
+                <p class="assistant-title">小用</p>
+                <p class="assistant-copy">我会一件件问，不需要打开聊天页。</p>
+              </div>
+            </aside>
+
+            <section class="scan-card">
+              <div class="section-kicker">第 2 / 5 件</div>
+              <div class="scan-focus">
+                <div class="label-top">
+                  <div class="glyph-wrap" style="--cat: var(--blue)"><svg><use href="#i-milk"></use></svg></div>
+                  <span class="days" style="--status: var(--bad)">今天到期</span>
+                </div>
+                <h3 class="hero-title">牛奶还在吗？</h3>
+                <p class="item-meta">冷藏第二层 · 当前剩 2 件</p>
+              </div>
+              <div class="scan-actions">
+                <button type="button">用掉了</button>
+                <button type="button">还在</button>
+                <button type="button">丢掉了</button>
+              </div>
+              <div class="progress-rail"><span></span></div>
+            </section>
+          </section>
+
+          <section class="screen-page" data-screen="empty">
+            <header class="topbar">
+              <div>
+                <h2 class="app-title">及时用</h2>
+                <p class="app-sub">从第一张保鲜标签开始</p>
+              </div>
+            </header>
+
+            <article class="label-card" style="--cat: var(--brand); --status: var(--fresh); opacity:.78; min-height:210px; flex:auto; display:flex; flex-direction:column; justify-content:center; text-align:center;">
+              <div class="glyph-wrap" style="margin:0 auto 12px"><svg><use href="#i-box"></use></svg></div>
+              <h3 class="hero-title" style="margin:0">还没有贴上保鲜标签</h3>
+              <p class="hero-copy" style="margin:10px auto 0">从牛奶、药品、护肤品开始记录，到期前小用会提醒你。</p>
+            </article>
+
+            <div class="sheet-actions">
+              <button class="primary" type="button">贴第一张标签</button>
+              <button class="secondary" type="button">对小用说一句</button>
+            </div>
+          </section>
+
+          <button id="sayHandle" class="floating-say" type="button" aria-label="打开小用助手">
+            <span class="say-icon"><svg width="19" height="19"><use href="#i-mic"></use></svg></span>
+            <span><span class="say-title">说一句库存操作</span><span class="say-copy">小用会先整理，再让你确认</span></span>
+            <span class="say-grip"></span>
+          </button>
+
+          <div id="dim" class="dim"></div>
+          <aside id="sheet" class="bottom-sheet" aria-label="小用助手">
+            <div class="sheet-grip"></div>
+            <div class="sheet-body">
+              <div class="assistant-note compact" style="margin-bottom:14px">
+                <div class="assistant-face"></div>
+                <div>
+                  <p class="assistant-title">小用正在听</p>
+                  <p class="assistant-copy">例如：把牛奶用掉一瓶</p>
+                </div>
+              </div>
+              <h3 class="sheet-title">我在听</h3>
+              <p class="sheet-copy">直接说库存变化，我会先转成待确认操作。</p>
+              <div class="wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+              <div class="understand">
+                <div class="understand-row"><span>识别到</span><span>把牛奶用掉一瓶</span></div>
+                <div class="understand-row"><span>动作</span><span>使用物品</span></div>
+                <div class="understand-row"><span>结果</span><span>牛奶剩余 2 -> 1</span></div>
+              </div>
+              <div class="sheet-actions">
+                <button class="primary" type="button">确认执行</button>
+                <button class="secondary" type="button">重新说</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const tabs = document.querySelectorAll(".tab");
+    const pages = document.querySelectorAll(".screen-page");
+    const handle = document.querySelector("#sayHandle");
+    const sheet = document.querySelector("#sheet");
+    const dim = document.querySelector("#dim");
+    const screen = document.querySelector(".screen");
+    const backgroundOptions = document.querySelectorAll(".bg-option");
+    const backgroundCaption = document.querySelector("#backgroundCaption");
+    let scanTimer;
+
+    function setPage(name) {
+      clearTimeout(scanTimer);
+      screen.classList.remove("switching");
+      void screen.offsetWidth;
+      screen.classList.add("switching");
+      scanTimer = window.setTimeout(() => {
+        screen.classList.remove("switching");
+      }, 620);
+
+      tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.page === name));
+      pages.forEach((page) => {
+        const active = page.dataset.screen === name;
+        page.classList.toggle("active", active);
+        if (active) {
+          page.scrollTop = 0;
+        }
+      });
+      document.documentElement.style.setProperty("--scan-progress", "42%");
+      document.querySelectorAll(".scan-actions button").forEach((item) => item.classList.remove("selected"));
+      closeSheet();
+    }
+
+    function openSheet() {
+      sheet.classList.add("open");
+      dim.classList.add("active");
+      handle.classList.add("sheet-open");
+    }
+
+    function closeSheet() {
+      sheet.classList.remove("open");
+      dim.classList.remove("active");
+      handle.classList.remove("sheet-open");
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => setPage(tab.dataset.page));
+    });
+
+    backgroundOptions.forEach((option) => {
+      option.addEventListener("click", () => {
+        screen.dataset.bg = option.dataset.bg;
+        backgroundOptions.forEach((item) => item.classList.toggle("active", item === option));
+        backgroundCaption.textContent = option.dataset.caption;
+      });
+    });
+
+    handle.addEventListener("click", openSheet);
+    dim.addEventListener("click", closeSheet);
+
+    document.querySelectorAll(".label-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        card.classList.remove("tapped");
+        void card.offsetWidth;
+        card.classList.add("tapped");
+        window.setTimeout(() => card.classList.remove("tapped"), 380);
+      });
+    });
+
+    document.querySelectorAll(".scan-actions button").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".scan-actions button").forEach((item) => item.classList.remove("selected"));
+        button.classList.add("selected");
+        document.documentElement.style.setProperty("--scan-progress", "68%");
+      });
+    });
+
+    document.querySelectorAll(".primary").forEach((button) => {
+      button.addEventListener("click", () => {
+        button.classList.remove("success-pop");
+        void button.offsetWidth;
+        button.classList.add("success-pop");
+        window.setTimeout(() => button.classList.remove("success-pop"), 540);
+      });
+    });
+  </script>
+</body>
+</html>

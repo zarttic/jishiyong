@@ -49,6 +49,7 @@ import com.jishiyong.data.repository.ExpiryStatus
 import com.jishiyong.ui.components.AssistantFace
 import com.jishiyong.ui.components.AssistantNote
 import com.jishiyong.ui.components.FoldedPaperSurface
+import com.jishiyong.ui.components.FreshBackdropStyle
 import com.jishiyong.ui.components.FreshnessLabelCard
 import com.jishiyong.ui.components.FridgeDoorBackdrop
 import com.jishiyong.ui.components.remainingDaysLabel
@@ -66,6 +67,7 @@ import com.jishiyong.viewmodel.MainViewModel
 fun InspectionScreen(
     viewModel: MainViewModel,
     onBack: () -> Unit,
+    backdropStyle: FreshBackdropStyle = FreshBackdropStyle.ColdMist,
     modifier: Modifier = Modifier
 ) {
     val activeItems by viewModel.activeItems.collectAsStateWithLifecycle()
@@ -128,7 +130,8 @@ fun InspectionScreen(
         FridgeDoorBackdrop(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            style = backdropStyle
         ) {
             Column(
                 modifier = Modifier
@@ -235,7 +238,7 @@ private fun InspectionCard(
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 InspectionButton(
                     text = "用掉了",
@@ -244,22 +247,27 @@ private fun InspectionCard(
                     onClick = onUsed,
                     modifier = Modifier.fillMaxWidth()
                 )
-                InspectionButton(
-                    text = "还在",
-                    icon = Icons.Default.Inventory2,
-                    color = statusColor,
-                    onClick = onKept,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    outlined = true
-                )
-                InspectionButton(
-                    text = "丢掉了",
-                    icon = Icons.Default.DeleteOutline,
-                    color = StatusCritical,
-                    onClick = onDiscarded,
-                    modifier = Modifier.fillMaxWidth(),
-                    outlined = true
-                )
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    InspectionButton(
+                        text = "还在",
+                        icon = Icons.Default.Inventory2,
+                        color = statusColor,
+                        onClick = onKept,
+                        modifier = Modifier.weight(1f),
+                        outlined = true
+                    )
+                    InspectionButton(
+                        text = "丢掉了",
+                        icon = Icons.Default.DeleteOutline,
+                        color = StatusCritical,
+                        onClick = onDiscarded,
+                        modifier = Modifier.weight(1f),
+                        outlined = true
+                    )
+                }
             }
 
             Text(

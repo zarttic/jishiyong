@@ -63,6 +63,7 @@ import com.jishiyong.data.repository.ExpiryStatus
 import com.jishiyong.ui.components.AssistantFace
 import com.jishiyong.ui.components.CategoryStamp
 import com.jishiyong.ui.components.FoldedPaperSurface
+import com.jishiyong.ui.components.FreshBackdropStyle
 import com.jishiyong.ui.components.FreshCornerLarge
 import com.jishiyong.ui.components.FreshnessLabelCard
 import com.jishiyong.ui.components.FreshnessTicks
@@ -92,6 +93,7 @@ fun ItemDetailScreen(
     itemId: Long,
     viewModel: MainViewModel,
     onBack: () -> Unit,
+    backdropStyle: FreshBackdropStyle = FreshBackdropStyle.ColdMist,
     modifier: Modifier = Modifier
 ) {
     val detailState by remember(itemId) {
@@ -187,7 +189,8 @@ fun ItemDetailScreen(
         FridgeDoorBackdrop(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            style = backdropStyle
         ) {
             Column(
                 modifier = Modifier
@@ -304,19 +307,27 @@ private fun FolderHero(
             bottomEnd = 26.dp,
             bottomStart = 10.dp
         ),
-        color = SurfaceClean.copy(alpha = 0.92f),
+        color = SurfaceClean.copy(alpha = 0.9f),
         border = BorderStroke(1.dp, OutlineSoft.copy(alpha = 0.9f))
     ) {
         Column {
-            Box(
-                modifier = Modifier
-                    .width(142.dp)
-                    .height(34.dp)
-                    .background(
-                        color = FoldPaper,
-                        shape = RoundedCornerShape(bottomEnd = 18.dp)
-                    )
-            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .width(142.dp)
+                        .height(34.dp)
+                        .background(
+                            color = FoldPaper,
+                            shape = RoundedCornerShape(bottomEnd = 18.dp)
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(1.dp)
+                        .background(OutlineSoft.copy(alpha = 0.62f))
+                )
+            }
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -354,12 +365,14 @@ private fun FolderHero(
                     color = statusColor
                 )
 
-                FreshnessLabelCard(
-                    item = item,
-                    expiryStatus = expiryStatus,
-                    daysUntilExpiry = daysUntilExpiry,
-                    large = true
-                )
+                Box(modifier = Modifier.padding(horizontal = 2.dp)) {
+                    FreshnessLabelCard(
+                        item = item,
+                        expiryStatus = expiryStatus,
+                        daysUntilExpiry = daysUntilExpiry,
+                        large = true
+                    )
+                }
 
                 Timeline(
                     startText = DateUtils.formatShort(item.purchaseDate),

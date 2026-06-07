@@ -1,0 +1,60 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="152" y1="88" x2="866" y2="926" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EFF6F2"/>
+      <stop offset="0.54" stop-color="#F8F5EC"/>
+      <stop offset="1" stop-color="#E7F0EA"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="202" y1="160" x2="820" y2="852" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.64" stop-color="#FFFDF7"/>
+      <stop offset="1" stop-color="#F0E7D7"/>
+    </linearGradient>
+    <linearGradient id="assistant" x1="650" y1="194" x2="840" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE9B6"/>
+      <stop offset="1" stop-color="#F5C96F"/>
+    </linearGradient>
+    <filter id="softShadow" x="112" y="126" width="792" height="784" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="32" stdDeviation="34" flood-color="#352812" flood-opacity="0.16"/>
+    </filter>
+    <filter id="labelShadow" x="166" y="258" width="670" height="552" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="26" flood-color="#352812" flood-opacity="0.18"/>
+    </filter>
+    <filter id="assistantShadow" x="586" y="130" width="318" height="328" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="26" stdDeviation="22" flood-color="#6B4A12" flood-opacity="0.26"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <circle cx="264" cy="170" r="176" fill="#FFFFFF" opacity="0.48"/>
+  <circle cx="810" cy="170" r="190" fill="#9BC0B4" opacity="0.18"/>
+
+  <g filter="url(#softShadow)">
+    <rect x="156" y="144" width="712" height="744" rx="164" fill="url(#panel)"/>
+    <path d="M244 336H780" stroke="#CFC2A9" stroke-width="8" stroke-linecap="round" opacity="0.16"/>
+    <path d="M244 708H780" stroke="#CFC2A9" stroke-width="8" stroke-linecap="round" opacity="0.12"/>
+  </g>
+
+  <g filter="url(#labelShadow)" transform="rotate(-2 506 526)">
+    <path d="M216 332C216 299.967 241.967 274 274 274H696C728.033 274 754 299.967 754 332V632C754 664.033 728.033 690 696 690H274C241.967 690 216 664.033 216 632V332Z" fill="#FFFDF7" stroke="#D9CFB9" stroke-width="12"/>
+    <path d="M670 274C699.823 274 754 328.177 754 358V392H712C688.804 392 670 373.196 670 350V274Z" fill="#EEE3CC" stroke="#D9CFB9" stroke-width="9"/>
+    <rect x="296" y="386" width="142" height="142" rx="44" fill="#DCE9FA"/>
+    <path d="M334 430H404L418 463V510C418 520 411 528 401 528H337C327 528 320 520 320 510V463L334 430Z" stroke="#2F73C8" stroke-width="17" stroke-linejoin="round"/>
+    <path d="M322 463H416M346 430L338 463M392 430L400 463" stroke="#2F73C8" stroke-width="14" stroke-linecap="round"/>
+    <path d="M350 490H390" stroke="#2F73C8" stroke-width="14" stroke-linecap="round"/>
+    <path d="M510 414H642" stroke="#18231F" stroke-width="27" stroke-linecap="round"/>
+    <path d="M510 484H626" stroke="#68746F" stroke-width="22" stroke-linecap="round"/>
+    <rect x="296" y="578" width="96" height="26" rx="13" fill="#1F8F64"/>
+    <rect x="414" y="578" width="96" height="26" rx="13" fill="#C9801D"/>
+    <rect x="532" y="578" width="96" height="26" rx="13" fill="#D85C2A"/>
+  </g>
+
+  <g filter="url(#assistantShadow)" transform="rotate(6 734 298)">
+    <rect x="626" y="188" width="230" height="230" rx="64" fill="url(#assistant)" stroke="#C9801D" stroke-width="10"/>
+    <path d="M794 188C827.137 188 856 216.863 856 250V280H828C801.49 280 780 258.51 780 232V188H794Z" fill="#F0B957" stroke="#C9801D" stroke-width="7"/>
+    <rect x="690" y="274" width="22" height="48" rx="11" fill="#0F4F44"/>
+    <rect x="778" y="274" width="22" height="48" rx="11" fill="#0F4F44"/>
+    <path d="M698 348C720 368 760 370 790 344" stroke="#0F4F44" stroke-width="13" stroke-linecap="round"/>
+    <path d="M668 232H728" stroke="#FFF6D8" stroke-width="14" stroke-linecap="round" opacity="0.82"/>
+  </g>
+</svg>

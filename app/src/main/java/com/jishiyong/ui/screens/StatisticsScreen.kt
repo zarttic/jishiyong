@@ -50,6 +50,7 @@ import com.jishiyong.data.db.entity.ItemCategory
 import com.jishiyong.ui.components.AssistantFace
 import com.jishiyong.ui.components.CategoryStamp
 import com.jishiyong.ui.components.FoldedPaperSurface
+import com.jishiyong.ui.components.FreshBackdropStyle
 import com.jishiyong.ui.components.FridgeDoorBackdrop
 import com.jishiyong.ui.components.categoryColor
 import com.jishiyong.ui.components.nullableConsumeColor
@@ -71,6 +72,7 @@ import java.time.format.DateTimeFormatter
 fun StatisticsScreen(
     viewModel: StatisticsViewModel,
     onBack: () -> Unit,
+    backdropStyle: FreshBackdropStyle = FreshBackdropStyle.ColdMist,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -112,7 +114,8 @@ fun StatisticsScreen(
         FridgeDoorBackdrop(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            style = backdropStyle
         ) {
             Column(
                 modifier = Modifier
@@ -165,6 +168,7 @@ private fun MonthReceipt(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(15.dp)
         ) {
+            ReceiptTearEdge()
             MonthSelector(
                 selectedMonth = selectedMonth,
                 onMonthSelected = onMonthSelected
@@ -263,6 +267,23 @@ private fun MonthReceipt(
 
             ReceiptSuggestion(
                 message = reportSuggestion(wasteRate, categoryStats.firstOrNull()?.category)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReceiptTearEdge() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        repeat(12) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(7.dp)
+                    .background(FoldPaper.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
             )
         }
     }

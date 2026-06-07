@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
@@ -76,43 +78,190 @@ val FreshCornerMedium = RoundedCornerShape(
     bottomStart = 7.dp
 )
 
-fun Modifier.fridgeDoorBackground(): Modifier = this.background(
-    brush = Brush.verticalGradient(
-        colors = listOf(Door, Paper)
-    )
+enum class FreshBackdropStyle(
+    val displayName: String,
+    val description: String
+) {
+    ColdMist("冷雾面", "更轻、更干净"),
+    MagneticWall("磁吸墙", "保留生活感"),
+    PaperBoard("纸贴板", "手账便签感"),
+    KitchenTile("厨房砖", "生活场景强"),
+    ShelfBoard("层板", "强调时间货架")
+}
+
+fun Modifier.fridgeDoorBackground(style: FreshBackdropStyle = FreshBackdropStyle.ColdMist): Modifier = this.background(
+    brush = when (style) {
+        FreshBackdropStyle.ColdMist -> Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFFEFF6F2),
+                Color(0xFFF8F5EC),
+                Color(0xFFEFE6D4)
+            )
+        )
+        FreshBackdropStyle.MagneticWall -> Brush.verticalGradient(
+            colors = listOf(Door, Paper)
+        )
+        FreshBackdropStyle.PaperBoard -> Brush.verticalGradient(
+            colors = listOf(Color(0xFFF8F1DF), Color(0xFFFFF8E8), Paper)
+        )
+        FreshBackdropStyle.KitchenTile -> Brush.verticalGradient(
+            colors = listOf(Color(0xFFF7F5ED), Color(0xFFEDF4EF))
+        )
+        FreshBackdropStyle.ShelfBoard -> Brush.verticalGradient(
+            colors = listOf(Color(0xFFF4EEE0), Color(0xFFF8F3E7), Color(0xFFEBE1CD))
+        )
+    }
 )
 
 @Composable
 fun FridgeDoorBackdrop(
     modifier: Modifier = Modifier,
+    style: FreshBackdropStyle = FreshBackdropStyle.ColdMist,
     content: @Composable BoxScope.() -> Unit
 ) {
     Box(
         modifier = modifier
-            .fridgeDoorBackground()
+            .fridgeDoorBackground(style)
             .drawWithContent {
-                drawContent()
-                val centerX = size.width / 2f
-                val lineColor = OutlineSoft.copy(alpha = 0.56f)
-                drawLine(
-                    color = lineColor,
-                    start = Offset(centerX, 0f),
-                    end = Offset(centerX, size.height),
-                    strokeWidth = 1.2.dp.toPx()
-                )
+                when (style) {
+                    FreshBackdropStyle.ColdMist -> {
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.52f),
+                            radius = minOf(size.width, size.height) * 0.36f,
+                            center = Offset(size.width * 0.22f, size.height * 0.04f)
+                        )
+                        drawCircle(
+                            color = BrandPrimary.copy(alpha = 0.08f),
+                            radius = minOf(size.width, size.height) * 0.34f,
+                            center = Offset(size.width * 0.9f, size.height * 0.08f)
+                        )
+                    }
+                    FreshBackdropStyle.PaperBoard -> {
+                        val step = 22.dp.toPx()
+                        var x = 0f
+                        while (x < size.width) {
+                            drawLine(
+                                color = OutlineSoft.copy(alpha = 0.16f),
+                                start = Offset(x, 0f),
+                                end = Offset(x, size.height),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                            x += step
+                        }
+                        var y = 0f
+                        while (y < size.height) {
+                            drawLine(
+                                color = OutlineSoft.copy(alpha = 0.12f),
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                            y += step
+                        }
+                    }
+                    FreshBackdropStyle.KitchenTile -> {
+                        val step = 72.dp.toPx()
+                        var x = 0f
+                        while (x < size.width) {
+                            drawLine(
+                                color = InkMuted.copy(alpha = 0.12f),
+                                start = Offset(x, 0f),
+                                end = Offset(x, size.height),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                            x += step
+                        }
+                        var y = 0f
+                        while (y < size.height) {
+                            drawLine(
+                                color = InkMuted.copy(alpha = 0.1f),
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                            y += step
+                        }
+                    }
+                    FreshBackdropStyle.ShelfBoard -> {
+                        listOf(
+                            size.height * 0.22f,
+                            size.height * 0.47f,
+                            size.height * 0.73f
+                        ).forEach { y ->
+                            drawLine(
+                                color = OutlineSoft.copy(alpha = 0.34f),
+                                start = Offset(18.dp.toPx(), y),
+                                end = Offset(size.width - 18.dp.toPx(), y),
+                                strokeWidth = 1.2.dp.toPx()
+                            )
+                        }
+                    }
+                    FreshBackdropStyle.MagneticWall -> Unit
+                }
+                val lineAlpha = when (style) {
+                    FreshBackdropStyle.ColdMist -> 0.12f
+                    FreshBackdropStyle.MagneticWall -> 0.22f
+                    FreshBackdropStyle.PaperBoard -> 0.18f
+                    FreshBackdropStyle.KitchenTile -> 0.08f
+                    FreshBackdropStyle.ShelfBoard -> 0.28f
+                }
+                val lineColor = OutlineSoft.copy(alpha = lineAlpha)
                 listOf(188.dp.toPx(), size.height - 184.dp.toPx()).forEach { y ->
                     if (y in 0f..size.height) {
                         drawLine(
-                            color = lineColor.copy(alpha = 0.72f),
+                            color = lineColor,
                             start = Offset(22.dp.toPx(), y),
                             end = Offset(size.width - 22.dp.toPx(), y),
                             strokeWidth = 1.dp.toPx()
                         )
                     }
                 }
+                drawContent()
             },
         content = content
     )
+}
+
+@Composable
+fun BackdropStyleSelector(
+    selectedStyle: FreshBackdropStyle,
+    onStyleSelected: (FreshBackdropStyle) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(FreshBackdropStyle.entries.toList()) { style ->
+            val selected = selectedStyle == style
+            Surface(
+                modifier = Modifier.clickable { onStyleSelected(style) },
+                shape = RoundedCornerShape(16.dp),
+                color = if (selected) BrandPrimary else SurfaceClean.copy(alpha = 0.74f),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (selected) BrandPrimary else OutlineSoft.copy(alpha = 0.8f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = style.displayName,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (selected) Color.White else BrandPrimaryDark
+                    )
+                    Text(
+                        text = style.description,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) Color.White.copy(alpha = 0.78f) else InkMuted
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
