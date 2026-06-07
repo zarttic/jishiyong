@@ -14,7 +14,7 @@ import java.time.LocalDate
 class RoomAgentMemoryStoreTest {
 
     @Test
-    fun remembersSuccessfulAliasAndRecallsThroughFtsCandidates() = runTest {
+    fun remembersSuccessfulAlias() = runTest {
         val dao = FakeAgentMemoryDao()
         val store = RoomAgentMemoryStore(dao)
         val milk = item(id = 1, name = "蒙牛纯牛奶")
@@ -28,7 +28,28 @@ class RoomAgentMemoryStoreTest {
         assertEquals(1, dao.memories.size)
         assertTrue(dao.memories.single().searchableText.contains("常买"))
         assertTrue(dao.memories.single().searchableText.contains("蒙牛"))
+        assertEquals(1, dao.ftsEntries.size)
+    }
 
+    @Test
+    fun recallsThroughFtsCandidates() = runTest {
+        val dao = FakeAgentMemoryDao()
+        val store = RoomAgentMemoryStore(dao)
+        val milk = item(id = 1, name = "蒙牛纯牛奶")
+
+        dao.replaceAllMemories(
+            listOf(
+                AgentMemoryEntity(
+                    type = "ALIAS",
+                    key = "常买奶",
+                    valueJson = """{"alias":"常买的奶","canonical_name":"蒙牛纯牛奶","category_name":"DRINK"}""",
+                    searchableText = "常买的奶 常买奶 常买 买奶 蒙牛纯牛奶 蒙牛 牛纯 纯牛 牛奶 DRINK",
+                    confidence = 0.55f,
+                    hits = 1,
+                    updatedAt = 100L
+                )
+            )
+        )
         val memories = store.relevantMemoriesFor("今天喝一瓶常买的奶", listOf(milk))
 
         assertEquals(1, memories.size)

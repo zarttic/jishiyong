@@ -1,4 +1,6 @@
 import java.util.Properties
+import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -157,4 +159,11 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.org.json)
+}
+
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("failed", "skipped")
+        exceptionFormat = TestExceptionFormat.FULL
+    }
 }
