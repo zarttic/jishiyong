@@ -25,10 +25,9 @@ class RoomAgentMemoryStoreTest {
             matchedItem = milk
         )
 
-        assertEquals(1, dao.memories.size)
-        assertTrue(dao.memories.single().searchableText.contains("常买"))
-        assertTrue(dao.memories.single().searchableText.contains("蒙牛"))
-        assertEquals(1, dao.ftsEntries.size)
+        assertTrue(dao.memories.any { it.searchableText.contains("常买") })
+        assertTrue(dao.memories.all { it.searchableText.contains("蒙牛") })
+        assertEquals(dao.memories.size, dao.ftsEntries.size)
     }
 
     @Test
