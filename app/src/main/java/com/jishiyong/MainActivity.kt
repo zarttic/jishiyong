@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.jishiyong.ui.screens.AddItemScreen
 import com.jishiyong.ui.screens.HomeScreen
+import com.jishiyong.ui.screens.InspectionScreen
 import com.jishiyong.ui.screens.ItemDetailScreen
 import com.jishiyong.ui.screens.StatisticsScreen
 import com.jishiyong.ui.theme.JiShiYongTheme
@@ -82,6 +83,9 @@ fun JiShiYongNavigation() {
                 },
                 onStatsClick = {
                     navController.navigate("statistics")
+                },
+                onInspectClick = {
+                    navController.navigate("inspection")
                 }
             )
         }
@@ -119,6 +123,14 @@ fun JiShiYongNavigation() {
             val statisticsViewModel: StatisticsViewModel = viewModel()
             StatisticsScreen(
                 viewModel = statisticsViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // 小用巡视
+        composable("inspection") {
+            InspectionScreen(
+                viewModel = mainViewModel,
                 onBack = { navController.popBackStack() }
             )
         }

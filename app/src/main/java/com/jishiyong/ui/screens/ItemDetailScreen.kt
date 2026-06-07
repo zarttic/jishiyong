@@ -1,5 +1,6 @@
 package com.jishiyong.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.EventBusy
-import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Remove
@@ -36,7 +36,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -52,21 +51,37 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
+import com.jishiyong.data.repository.ExpiryStatus
+import com.jishiyong.ui.components.AssistantFace
+import com.jishiyong.ui.components.CategoryStamp
+import com.jishiyong.ui.components.FoldedPaperSurface
+import com.jishiyong.ui.components.FreshCornerLarge
+import com.jishiyong.ui.components.FreshnessLabelCard
+import com.jishiyong.ui.components.FreshnessTicks
+import com.jishiyong.ui.components.FridgeDoorBackdrop
 import com.jishiyong.ui.components.categoryColor
-import com.jishiyong.ui.components.categoryIcon
 import com.jishiyong.ui.components.consumeColor
 import com.jishiyong.ui.components.consumeIcon
+import com.jishiyong.ui.components.freshnessTickCount
 import com.jishiyong.ui.components.remainingDaysLabel
 import com.jishiyong.ui.components.statusColor
 import com.jishiyong.ui.components.statusLabel
+import com.jishiyong.ui.theme.BrandPrimary
+import com.jishiyong.ui.theme.BrandSoft
+import com.jishiyong.ui.theme.FoldPaper
+import com.jishiyong.ui.theme.InkMuted
+import com.jishiyong.ui.theme.OutlineSoft
+import com.jishiyong.ui.theme.StatusUrgent
+import com.jishiyong.ui.theme.StatusWarning
+import com.jishiyong.ui.theme.SurfaceClean
 import com.jishiyong.util.DateUtils
 import com.jishiyong.viewmodel.ItemDetailUiState
 import com.jishiyong.viewmodel.MainViewModel
@@ -104,7 +119,20 @@ fun ItemDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("物品详情") },
+                title = {
+                    Column {
+                        Text(
+                            text = "物品档案袋",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = item.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -116,7 +144,7 @@ fun ItemDetailScreen(
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = "标记已处理",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = BrandPrimary
                             )
                         }
                         DropdownMenu(
@@ -157,78 +185,86 @@ fun ItemDetailScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Column(
+        FridgeDoorBackdrop(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DetailHero(
-                item = item,
-                statusText = expiryStatus.statusLabel(),
-                remainingText = remainingDaysLabel(daysUntilExpiry),
-                statusColor = statusColor
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                FolderHero(
+                    item = item,
+                    statusText = expiryStatus.statusLabel(),
+                    remainingText = remainingDaysLabel(daysUntilExpiry),
+                    statusColor = statusColor,
+                    expiryStatus = expiryStatus,
+                    daysUntilExpiry = daysUntilExpiry,
+                    tickCount = freshnessTickCount(daysUntilExpiry, expiryStatus)
+                )
 
-            DetailSection(title = "基础信息") {
-                DetailRow(
-                    icon = Icons.Default.Category,
-                    label = "分类",
-                    value = item.category.displayName,
-                    color = item.category.categoryColor()
-                )
-                DetailRow(
-                    icon = Icons.Default.CalendarMonth,
-                    label = "购买日期",
-                    value = DateUtils.formatChinese(item.purchaseDate)
-                )
-                DetailRow(
-                    icon = Icons.Default.EventBusy,
-                    label = "到期日期",
-                    value = DateUtils.formatChinese(item.expirationDate),
-                    color = statusColor
-                )
-                DetailRow(
-                    icon = Icons.Default.Numbers,
-                    label = "数量",
-                    value = "${item.quantity} 件${if (item.usedQuantity > 0) "，已用 ${item.usedQuantity}" else ""}"
-                )
-                DetailRow(
-                    icon = Icons.Default.Notifications,
-                    label = "提醒",
-                    value = item.reminderDays.joinToString("、") { "提前${it}天" }
-                )
-                if (item.note.isNotBlank()) {
+                DetailPaperSection(title = "档案信息") {
                     DetailRow(
-                        icon = Icons.AutoMirrored.Filled.Notes,
-                        label = "备注",
-                        value = item.note
+                        icon = Icons.Default.Category,
+                        label = "分类",
+                        value = item.category.displayName,
+                        color = item.category.categoryColor()
+                    )
+                    DetailRow(
+                        icon = Icons.Default.CalendarMonth,
+                        label = "购买日期",
+                        value = DateUtils.formatChinese(item.purchaseDate)
+                    )
+                    DetailRow(
+                        icon = Icons.Default.EventBusy,
+                        label = "到期日期",
+                        value = DateUtils.formatChinese(item.expirationDate),
+                        color = statusColor
+                    )
+                    DetailRow(
+                        icon = Icons.Default.Numbers,
+                        label = "数量",
+                        value = "${item.quantity} 件${if (item.usedQuantity > 0) "，已用 ${item.usedQuantity}" else ""}"
+                    )
+                    DetailRow(
+                        icon = Icons.Default.Notifications,
+                        label = "提醒",
+                        value = item.reminderDays.joinToString("、") { "提前${it}天" }
+                    )
+                    if (item.note.isNotBlank()) {
+                        DetailRow(
+                            icon = Icons.AutoMirrored.Filled.Notes,
+                            label = "备注",
+                            value = item.note
+                        )
+                    }
+                }
+
+                if (item.quantity > 1) {
+                    UsageTicksSection(
+                        item = item,
+                        onAddOne = {
+                            viewModel.updateUsedQuantity(item, item.usedQuantity + 1)
+                        },
+                        onUndo = {
+                            viewModel.updateUsedQuantity(item, item.usedQuantity - 1)
+                        }
                     )
                 }
-            }
 
-            if (item.quantity > 1) {
-                UsageProgressSection(
-                    item = item,
-                    onAddOne = {
-                        viewModel.updateUsedQuantity(item, item.usedQuantity + 1)
-                    },
-                    onUndo = {
-                        viewModel.updateUsedQuantity(item, item.usedQuantity - 1)
-                    }
-                )
+                Spacer(modifier = Modifier.height(24.dp))
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("删除物品") },
+            title = { Text("撕下标签") },
             text = { Text("确定删除“${item.name}”？此操作不可撤销。") },
             confirmButton = {
                 TextButton(
@@ -245,129 +281,157 @@ fun ItemDetailScreen(
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text("取消")
                 }
-            }
+            },
+            containerColor = SurfaceClean,
+            shape = FreshCornerLarge
         )
     }
 }
 
 @Composable
-private fun DetailHero(
+private fun FolderHero(
     item: Item,
     statusText: String,
     remainingText: String,
-    statusColor: Color
+    statusColor: Color,
+    expiryStatus: ExpiryStatus,
+    daysUntilExpiry: Int,
+    tickCount: Int
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface
+        shape = RoundedCornerShape(
+            topStart = 26.dp,
+            topEnd = 26.dp,
+            bottomEnd = 26.dp,
+            bottomStart = 10.dp
+        ),
+        color = SurfaceClean.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, OutlineSoft.copy(alpha = 0.9f))
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        modifier = Modifier.size(52.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = item.category.categoryColor().copy(alpha = 0.12f)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = item.category.categoryIcon(),
-                                contentDescription = null,
-                                tint = item.category.categoryColor(),
-                                modifier = Modifier.size(27.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
-                        Text(
-                            text = item.name,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = item.category.displayName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = statusColor.copy(alpha = 0.12f)
-                ) {
-                    Text(
-                        text = statusText,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = statusColor,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+        Column {
+            Box(
+                modifier = Modifier
+                    .width(142.dp)
+                    .height(34.dp)
+                    .background(
+                        color = FoldPaper,
+                        shape = RoundedCornerShape(bottomEnd = 18.dp)
                     )
-                }
-            }
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                color = statusColor.copy(alpha = 0.1f)
+            )
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text(
-                            text = "到期状态",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = remainingText,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = statusColor
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CategoryStamp(category = item.category, size = 52.dp)
+                        Column {
+                            Text(
+                                text = item.name,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = statusColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
-                    Text(
-                        text = DateUtils.formatShort(item.expirationDate),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = statusColor
-                    )
                 }
+
+                Text(
+                    text = remainingText,
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = statusColor
+                )
+
+                FreshnessLabelCard(
+                    item = item,
+                    expiryStatus = expiryStatus,
+                    daysUntilExpiry = daysUntilExpiry,
+                    large = true
+                )
+
+                Timeline(
+                    startText = DateUtils.formatShort(item.purchaseDate),
+                    endText = DateUtils.formatShort(item.expirationDate)
+                )
+
+                FreshnessTicks(
+                    activeTicks = tickCount,
+                    color = statusColor
+                )
             }
         }
     }
 }
 
 @Composable
-private fun DetailSection(
+private fun Timeline(
+    startText: String,
+    endText: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = startText,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = InkMuted
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(8.dp)
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(BrandPrimary, StatusWarning, StatusUrgent)
+                    ),
+                    shape = RoundedCornerShape(999.dp)
+                )
+        )
+        Text(
+            text = endText,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = InkMuted
+        )
+    }
+}
+
+@Composable
+private fun DetailPaperSection(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Surface(
+    FoldedPaperSurface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface
+        color = SurfaceClean.copy(alpha = 0.92f),
+        borderColor = OutlineSoft.copy(alpha = 0.9f)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
             content()
         }
@@ -375,41 +439,35 @@ private fun DetailSection(
 }
 
 @Composable
-private fun UsageProgressSection(
+private fun UsageTicksSection(
     item: Item,
     onAddOne: () -> Unit,
     onUndo: () -> Unit
 ) {
-    val progress = if (item.quantity > 0) {
-        item.usedQuantity.toFloat() / item.quantity
-    } else {
-        0f
-    }
-
-    DetailSection(title = "使用进度") {
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(8.dp)),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+    DetailPaperSection(title = "数量使用刻度") {
+        Text(
+            text = "已用 ${item.usedQuantity} / ${item.quantity}",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = BrandPrimary
         )
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            Text(
-                text = "已用 ${item.usedQuantity}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "剩余 ${item.quantity - item.usedQuantity}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            repeat(item.quantity) { index ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(22.dp)
+                        .background(
+                            color = if (index < item.usedQuantity) BrandPrimary else BrandSoft,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                )
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -418,7 +476,7 @@ private fun UsageProgressSection(
             Button(
                 onClick = onAddOne,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
@@ -428,7 +486,7 @@ private fun UsageProgressSection(
                 OutlinedButton(
                     onClick = onUndo,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Icon(Icons.Default.Remove, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
@@ -444,26 +502,19 @@ private fun DetailRow(
     icon: ImageVector,
     label: String,
     value: String,
-    color: Color = MaterialTheme.colorScheme.primary
+    color: Color = BrandPrimary
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Surface(
-            modifier = Modifier.size(34.dp),
-            shape = RoundedCornerShape(8.dp),
-            color = color.copy(alpha = 0.12f)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
+        CategoryStamp(
+            icon = icon,
+            color = color,
+            size = 34.dp
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -473,7 +524,8 @@ private fun DetailRow(
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -488,22 +540,9 @@ private fun LoadingItem() {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(
-                modifier = Modifier.size(58.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Inventory2,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
+            AssistantFace(boxSize = 58.dp)
             Spacer(modifier = Modifier.height(16.dp))
-            Text("正在加载物品")
+            Text("正在翻档案袋")
         }
     }
 }
@@ -516,26 +555,21 @@ private fun MissingItem(onBack: () -> Unit) {
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(
-                modifier = Modifier.size(58.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Inventory2,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            AssistantFace(boxSize = 58.dp)
             Spacer(modifier = Modifier.height(16.dp))
-            Text("物品不存在")
+            Text(
+                text = "这张标签不在了",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onBack, shape = RoundedCornerShape(8.dp)) {
-                Text("返回")
+            Button(onClick = onBack, shape = RoundedCornerShape(16.dp)) {
+                Text("返回保鲜墙")
             }
         }
     }

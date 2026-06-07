@@ -15,8 +15,8 @@ import androidx.core.view.WindowCompat
 private val LightColorScheme = lightColorScheme(
     primary = BrandPrimary,
     onPrimary = Color.White,
-    primaryContainer = SurfaceRaised,
-    onPrimaryContainer = BrandPrimary,
+    primaryContainer = BrandSoft,
+    onPrimaryContainer = BrandPrimaryDark,
     secondary = BrandAccent,
     onSecondary = Ink,
     secondaryContainer = BrandAccentSoft,
@@ -27,7 +27,7 @@ private val LightColorScheme = lightColorScheme(
     onBackground = Ink,
     surface = SurfaceClean,
     onSurface = Ink,
-    surfaceVariant = SurfaceRaised,
+    surfaceVariant = SurfaceSoft,
     onSurfaceVariant = InkMuted,
     outline = OutlineSoft,
     outlineVariant = OutlineSoft,
@@ -36,10 +36,10 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = BrandPrimaryDark,
+    primary = BrandSoft,
     onPrimary = DarkPaper,
     primaryContainer = DarkSurfaceRaised,
-    onPrimaryContainer = BrandPrimaryDark,
+    onPrimaryContainer = BrandSoft,
     secondary = BrandAccent,
     onSecondary = DarkPaper,
     secondaryContainer = Color(0xFF3B2F16),
@@ -70,7 +70,9 @@ fun JiShiYongTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

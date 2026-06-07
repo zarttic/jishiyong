@@ -1,10 +1,10 @@
 package com.jishiyong.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -37,20 +37,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jishiyong.data.db.dao.CategoryStat
+import com.jishiyong.data.db.dao.ConsumeStat
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.ItemCategory
+import com.jishiyong.ui.components.AssistantFace
+import com.jishiyong.ui.components.CategoryStamp
+import com.jishiyong.ui.components.FoldedPaperSurface
+import com.jishiyong.ui.components.FridgeDoorBackdrop
 import com.jishiyong.ui.components.categoryColor
-import com.jishiyong.ui.components.categoryIcon
 import com.jishiyong.ui.components.nullableConsumeColor
 import com.jishiyong.ui.components.nullableConsumeIcon
+import com.jishiyong.ui.theme.BrandPrimary
+import com.jishiyong.ui.theme.FoldPaper
+import com.jishiyong.ui.theme.InkMuted
+import com.jishiyong.ui.theme.OutlineSoft
 import com.jishiyong.ui.theme.StatusCritical
 import com.jishiyong.ui.theme.StatusFresh
+import com.jishiyong.ui.theme.SurfaceClean
+import com.jishiyong.ui.theme.SurfaceSoft
 import com.jishiyong.viewmodel.StatisticsViewModel
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -72,7 +82,20 @@ fun StatisticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("统计") },
+                title = {
+                    Column {
+                        Text(
+                            text = "少浪费报告",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = "像月度小收据一样看用掉和浪费",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -85,73 +108,152 @@ fun StatisticsScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Column(
+        FridgeDoorBackdrop(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                MonthReceipt(
+                    selectedMonth = uiState.selectedMonth,
+                    wasteRate = wasteRate,
+                    consumed = uiState.consumedThisMonth,
+                    wasted = uiState.wastedThisMonth,
+                    active = uiState.activeItems,
+                    categoryStats = uiState.categoryStats,
+                    consumeStats = uiState.monthlyConsumeStats,
+                    onMonthSelected = viewModel::selectMonth
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthReceipt(
+    selectedMonth: YearMonth,
+    wasteRate: Int,
+    consumed: Int,
+    wasted: Int,
+    active: Int,
+    categoryStats: List<CategoryStat>,
+    consumeStats: List<ConsumeStat>,
+    onMonthSelected: (YearMonth) -> Unit
+) {
+    val statusColor = if (wasteRate > 30) StatusCritical else BrandPrimary
+    FoldedPaperSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomEnd = 24.dp, bottomStart = 24.dp),
+        color = SurfaceClean.copy(alpha = 0.92f),
+        borderColor = OutlineSoft.copy(alpha = 0.9f),
+        foldColor = FoldPaper
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(15.dp)
         ) {
             MonthSelector(
-                selectedMonth = uiState.selectedMonth,
-                onMonthSelected = viewModel::selectMonth
+                selectedMonth = selectedMonth,
+                onMonthSelected = onMonthSelected
             )
+
+            ReceiptDivider()
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                MetricCard(
-                    label = "已处理",
-                    count = uiState.consumedThisMonth,
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (wasteRate > 30) "本月需要收紧" else "本月情况稳定",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        text = if (wasteRate > 30) "临期处理偏晚，下次可以少量多次补货。" else "用掉和库存节奏还算稳。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = "$wasteRate%",
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = statusColor
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ReceiptMetric(
+                    label = "用掉",
+                    count = consumed,
                     icon = Icons.Default.Verified,
                     color = StatusFresh,
                     modifier = Modifier.weight(1f)
                 )
-                MetricCard(
+                ReceiptMetric(
                     label = "浪费",
-                    count = uiState.wastedThisMonth,
+                    count = wasted,
                     icon = Icons.Default.TrendingDown,
                     color = StatusCritical,
                     modifier = Modifier.weight(1f)
                 )
-                MetricCard(
+                ReceiptMetric(
                     label = "库存",
-                    count = uiState.activeItems,
+                    count = active,
                     icon = Icons.Default.Inventory2,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = BrandPrimary,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            WasteRatePanel(wasteRate = wasteRate)
+            ReceiptDivider()
 
-            if (uiState.categoryStats.isNotEmpty()) {
-                StatisticsSection(title = "分类分布") {
-                    val maxCount = uiState.categoryStats.maxOfOrNull { it.count } ?: 1
-                    uiState.categoryStats.forEach { stat ->
-                        CategoryStatRow(
-                            category = stat.category,
-                            count = stat.count,
-                            maxCount = maxCount
-                        )
-                    }
+            ReceiptSectionTitle("分类占比")
+            if (categoryStats.isEmpty()) {
+                EmptyReceiptLine("这个月还没有分类记录")
+            } else {
+                val maxCount = categoryStats.maxOfOrNull { it.count } ?: 1
+                categoryStats.forEach { stat ->
+                    CategoryReceiptLine(
+                        category = stat.category,
+                        count = stat.count,
+                        maxCount = maxCount
+                    )
                 }
             }
 
-            if (uiState.monthlyConsumeStats.isNotEmpty()) {
-                StatisticsSection(title = "处理方式") {
-                    uiState.monthlyConsumeStats.forEach { stat ->
-                        ConsumeStatRow(
-                            consumeType = stat.consumeType,
-                            count = stat.count
-                        )
-                    }
+            ReceiptDivider()
+
+            ReceiptSectionTitle("处理方式")
+            if (consumeStats.isEmpty()) {
+                EmptyReceiptLine("这个月还没有处理记录")
+            } else {
+                consumeStats.forEach { stat ->
+                    ConsumeReceiptLine(
+                        consumeType = stat.consumeType,
+                        count = stat.count
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            ReceiptDivider()
+
+            ReceiptSuggestion(
+                message = reportSuggestion(wasteRate, categoryStats.firstOrNull()?.category)
+            )
         }
     }
 }
@@ -161,50 +263,44 @@ private fun MonthSelector(
     selectedMonth: YearMonth,
     onMonthSelected: (YearMonth) -> Unit
 ) {
-    Surface(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        IconButton(onClick = { onMonthSelected(selectedMonth.minusMonths(1)) }) {
+            Icon(Icons.Default.ChevronLeft, contentDescription = "上个月")
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = selectedMonth.format(DateTimeFormatter.ofPattern("yyyy年MM月")),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                text = "月度收据",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        IconButton(
+            onClick = {
+                val nextMonth = selectedMonth.plusMonths(1)
+                if (!nextMonth.isAfter(YearMonth.now())) {
+                    onMonthSelected(nextMonth)
+                }
+            },
+            enabled = !selectedMonth.plusMonths(1).isAfter(YearMonth.now())
         ) {
-            IconButton(onClick = { onMonthSelected(selectedMonth.minusMonths(1)) }) {
-                Icon(Icons.Default.ChevronLeft, contentDescription = "上个月")
-            }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = selectedMonth.format(DateTimeFormatter.ofPattern("yyyy年MM月")),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "消费与浪费情况",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            IconButton(
-                onClick = {
-                    val nextMonth = selectedMonth.plusMonths(1)
-                    if (!nextMonth.isAfter(YearMonth.now())) {
-                        onMonthSelected(nextMonth)
-                    }
-                },
-                enabled = !selectedMonth.plusMonths(1).isAfter(YearMonth.now())
-            ) {
-                Icon(Icons.Default.ChevronRight, contentDescription = "下个月")
-            }
+            Icon(Icons.Default.ChevronRight, contentDescription = "下个月")
         }
     }
 }
 
 @Composable
-private fun MetricCard(
+private fun ReceiptMetric(
     label: String,
     count: Int,
     icon: ImageVector,
@@ -213,36 +309,88 @@ private fun MetricCard(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface
+        shape = RoundedCornerShape(16.dp),
+        color = SurfaceSoft,
+        border = BorderStroke(1.dp, color.copy(alpha = 0.12f))
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            Surface(
-                modifier = Modifier.size(34.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = color.copy(alpha = 0.12f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = color,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
+            CategoryStamp(
+                icon = icon,
+                color = color,
+                size = 34.dp
+            )
             Text(
                 text = "$count",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
                 color = color
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = InkMuted
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReceiptDivider() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        repeat(18) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(OutlineSoft.copy(alpha = 0.78f))
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReceiptSectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.ExtraBold
+    )
+}
+
+@Composable
+private fun EmptyReceiptLine(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
+private fun ReceiptSuggestion(message: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        AssistantFace(boxSize = 32.dp)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "小用建议",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = BrandPrimary
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -250,106 +398,72 @@ private fun MetricCard(
 }
 
 @Composable
-private fun WasteRatePanel(wasteRate: Int) {
-    val color = if (wasteRate > 30) StatusCritical else StatusFresh
-    val message = if (wasteRate > 30) "浪费偏高，优先检查临期购买节奏" else "本月消耗情况稳定"
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.1f)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "本月浪费率",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Text(
-                text = "$wasteRate%",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatisticsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            content()
-        }
-    }
-}
-
-@Composable
-private fun CategoryStatRow(
+private fun CategoryReceiptLine(
     category: ItemCategory,
     count: Int,
     maxCount: Int
 ) {
     val color = category.categoryColor()
+    ReceiptLine(
+        label = category.displayName,
+        countText = "$count",
+        color = color,
+        fraction = count.toFloat() / maxCount.coerceAtLeast(1),
+        leading = {
+            CategoryStamp(category = category, size = 34.dp)
+        }
+    )
+}
+
+@Composable
+private fun ConsumeReceiptLine(
+    consumeType: ConsumeType?,
+    count: Int
+) {
+    val color = nullableConsumeColor(consumeType)
+    ReceiptLine(
+        label = consumeType?.displayName ?: "未知",
+        countText = "$count 件",
+        color = color,
+        fraction = 1f,
+        leading = {
+            CategoryStamp(
+                icon = nullableConsumeIcon(consumeType),
+                color = color,
+                size = 34.dp
+            )
+        }
+    )
+}
+
+@Composable
+private fun ReceiptLine(
+    label: String,
+    countText: String,
+    color: Color,
+    fraction: Float,
+    leading: @Composable () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Surface(
-            modifier = Modifier.size(34.dp),
-            shape = RoundedCornerShape(8.dp),
-            color = color.copy(alpha = 0.12f)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = category.categoryIcon(),
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(10.dp))
+        leading()
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = category.displayName,
+                    text = label,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "$count",
+                    text = countText,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = color
                 )
             }
@@ -358,58 +472,26 @@ private fun CategoryStatRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(7.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(color.copy(alpha = 0.12f))
+                    .background(color.copy(alpha = 0.13f), RoundedCornerShape(999.dp))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .fillMaxWidth(count.toFloat() / maxCount)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(color)
+                        .fillMaxWidth(fraction.coerceIn(0.05f, 1f))
+                        .background(color, RoundedCornerShape(999.dp))
                 )
             }
         }
     }
 }
 
-@Composable
-private fun ConsumeStatRow(
-    consumeType: ConsumeType?,
-    count: Int
-) {
-    val color = nullableConsumeColor(consumeType)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                modifier = Modifier.size(34.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = color.copy(alpha = 0.12f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = nullableConsumeIcon(consumeType),
-                        contentDescription = null,
-                        tint = color,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = consumeType?.displayName ?: "未知",
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-        Text(
-            text = "$count 件",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = color
-        )
+private fun reportSuggestion(
+    wasteRate: Int,
+    topCategory: ItemCategory?
+): String {
+    return if (wasteRate > 30) {
+        "${topCategory?.displayName ?: "临期"}类处理有点集中，下次少量多次补货。"
+    } else {
+        "${topCategory?.displayName ?: "库存"}节奏稳定，继续先看临期标签。"
     }
 }

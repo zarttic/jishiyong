@@ -10,41 +10,48 @@ import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -64,27 +72,51 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jishiyong.agent.InventoryAction
 import com.jishiyong.agent.InventoryPlanningDiagnostic
 import com.jishiyong.agent.VoiceInputState
+import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.repository.ExpiryStatus
-import com.jishiyong.update.UpdateCheckState
+import com.jishiyong.ui.components.AssistantFace
+import com.jishiyong.ui.components.AssistantNote
 import com.jishiyong.ui.components.CategoryFilterChips
-import com.jishiyong.ui.components.ExpiryOverviewCard
-import com.jishiyong.ui.components.ItemCard
+import com.jishiyong.ui.components.FoldedPaperSurface
+import com.jishiyong.ui.components.FreshCornerLarge
+import com.jishiyong.ui.components.FreshnessHeatBar
+import com.jishiyong.ui.components.FreshnessLabelCard
+import com.jishiyong.ui.components.FridgeDoorBackdrop
+import com.jishiyong.ui.components.SearchPaperField
+import com.jishiyong.ui.components.ShelfHeader
+import com.jishiyong.ui.components.StatusPill
+import com.jishiyong.ui.components.VoiceHandle
+import com.jishiyong.ui.components.consumeColor
+import com.jishiyong.ui.components.consumeIcon
+import com.jishiyong.ui.theme.BrandPrimary
+import com.jishiyong.ui.theme.BrandPrimaryDark
+import com.jishiyong.ui.theme.BrandSoft
+import com.jishiyong.ui.theme.InkMuted
+import com.jishiyong.ui.theme.OutlineSoft
+import com.jishiyong.ui.theme.StatusCritical
+import com.jishiyong.ui.theme.StatusFresh
+import com.jishiyong.ui.theme.StatusUrgent
+import com.jishiyong.ui.theme.StatusWarning
+import com.jishiyong.ui.theme.SurfaceClean
+import com.jishiyong.ui.theme.SurfaceSoft
+import com.jishiyong.update.UpdateCheckState
 import com.jishiyong.util.DateUtils
 import com.jishiyong.viewmodel.MainViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
     onItemClick: (Long) -> Unit,
     onAddClick: () -> Unit,
     onStatsClick: () -> Unit,
+    onInspectClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val activeItems by viewModel.activeItems.collectAsStateWithLifecycle()
     val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
     val activeCount by viewModel.activeCount.collectAsStateWithLifecycle()
-    val expiredCount by viewModel.expiredCount.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val updateCheckState by viewModel.updateCheckState.collectAsStateWithLifecycle()
@@ -93,6 +125,7 @@ fun HomeScreen(
     val uriHandler = LocalUriHandler.current
 
     var showDeleteDialog by remember { mutableStateOf<Item?>(null) }
+    var showConsumeMenuFor by remember { mutableStateOf<Item?>(null) }
     val ignoreNextSpeechError = remember { mutableStateOf(false) }
     val speechRecognizer = remember(context) {
         if (SpeechRecognizer.isRecognitionAvailable(context)) {
@@ -207,99 +240,173 @@ fun HomeScreen(
             .thenBy { it.expirationDate }
             .thenBy { it.name }
     )
-    val warningItems = activeItems.count {
-        when (viewModel.getExpiryStatus(it)) {
-            ExpiryStatus.FRESH, ExpiryStatus.EXPIRED -> false
+    val itemStatuses = prioritizedItems.associateWith { viewModel.getExpiryStatus(it) }
+    val itemDays = prioritizedItems.associateWith { viewModel.getDaysUntilExpiry(it) }
+    val warningItems = prioritizedItems.count {
+        when (itemStatuses[it]) {
+            ExpiryStatus.FRESH,
+            ExpiryStatus.EXPIRED -> false
             else -> true
         }
     }
+    val expiredItems = prioritizedItems.count { itemStatuses[it] == ExpiryStatus.EXPIRED }
+    val urgentCount = prioritizedItems.count {
+        val status = itemStatuses[it]
+        status == ExpiryStatus.EXPIRED ||
+                status == ExpiryStatus.EXPIRING_SOON ||
+                status == ExpiryStatus.EXPIRING_CRITICAL
+    }
+    val freshCount = prioritizedItems.count { itemStatuses[it] == ExpiryStatus.FRESH }
+    val shelves = buildTimeShelves(prioritizedItems, itemDays)
 
     Scaffold(
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAddClick,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("新增") },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        LazyColumn(
+        FridgeDoorBackdrop(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 96.dp)
+                .padding(paddingValues)
         ) {
-            item {
-                HomeHeader(
-                    activeCount = activeCount,
-                    searchQuery = searchQuery,
-                    onSearchChange = viewModel::setSearchQuery,
-                    updateCheckState = updateCheckState,
-                    onCheckUpdates = { viewModel.checkForUpdates(manual = true) },
-                    voiceInputState = voiceInputState,
-                    onVoiceClick = onVoiceClick,
-                    onStatsClick = onStatsClick
-                )
-            }
-
-            item {
-                ExpiryOverviewCard(
-                    totalItems = totalCount,
-                    activeItems = activeCount,
-                    expiredItems = expiredCount,
-                    warningItems = warningItems
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-            }
-
-            item {
-                CategoryFilterChips(
-                    selectedCategory = selectedCategory,
-                    onCategorySelected = viewModel::setCategory
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item {
-                InventorySectionHeader(
-                    count = prioritizedItems.size,
-                    hasFilters = selectedCategory != null || searchQuery.isNotBlank()
-                )
-            }
-
-            if (prioritizedItems.isEmpty()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 18.dp, top = 24.dp, end = 18.dp, bottom = 116.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 item {
-                    EmptyState(
-                        message = if (searchQuery.isNotBlank()) "没有匹配的物品" else "库存还是空的",
-                        subtitle = if (searchQuery.isNotBlank()) "换个关键词或清除筛选条件" else "添加第一件物品后，这里会按到期时间排序"
+                    HomeTopBar(
+                        activeCount = activeCount,
+                        updateCheckState = updateCheckState,
+                        onCheckUpdates = { viewModel.checkForUpdates(manual = true) },
+                        onStatsClick = onStatsClick,
+                        onInspectClick = onInspectClick
                     )
                 }
-            } else {
-                items(
-                    items = prioritizedItems,
-                    key = { it.id }
-                ) { item ->
-                    ItemCard(
-                        item = item,
-                        expiryStatus = viewModel.getExpiryStatus(item),
-                        daysUntilExpiry = viewModel.getDaysUntilExpiry(item),
-                        onClick = { onItemClick(item.id) },
-                        onDelete = { showDeleteDialog = item },
-                        onConsume = { viewModel.markAsConsumed(item, it) },
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+
+                item {
+                    TodayFreshnessBoard(
+                        urgentCount = urgentCount,
+                        warningCount = warningItems,
+                        freshCount = freshCount,
+                        expiredCount = expiredItems,
+                        topItems = prioritizedItems.take(3),
+                        itemDays = itemDays,
+                        totalCount = totalCount
                     )
+                }
+
+                item {
+                    AssistantNote(
+                        title = "小用便签",
+                        message = assistantHomeMessage(prioritizedItems.firstOrNull(), itemDays),
+                        trailing = {
+                            StatusPill(
+                                text = if (urgentCount > 0 || warningItems > 0) "提醒中" else "看着呢",
+                                color = if (urgentCount > 0 || warningItems > 0) StatusWarning else BrandPrimary
+                            )
+                        }
+                    )
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SearchPaperField(
+                            value = searchQuery,
+                            onValueChange = viewModel::setSearchQuery,
+                            modifier = Modifier.weight(1f),
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        )
+                        FoldedPaperSurface(
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clickable(onClick = onAddClick),
+                            shape = RoundedCornerShape(16.dp),
+                            color = BrandPrimary,
+                            borderColor = BrandPrimary
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "贴一张保鲜标签",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    CategoryFilterChips(
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = viewModel::setCategory
+                    )
+                }
+
+                if (prioritizedItems.isEmpty()) {
+                    item {
+                        EmptyFreshnessWall(
+                            filtered = selectedCategory != null || searchQuery.isNotBlank(),
+                            onAddClick = onAddClick,
+                            onVoiceClick = onVoiceClick
+                        )
+                    }
+                } else {
+                    shelves.forEach { shelf ->
+                        if (shelf.items.isNotEmpty()) {
+                            item(key = "shelf-${shelf.title}") {
+                                TimeShelfSection(
+                                    shelf = shelf,
+                                    itemStatuses = itemStatuses,
+                                    itemDays = itemDays,
+                                    onItemClick = { onItemClick(it.id) },
+                                    onConsumeClick = { showConsumeMenuFor = it },
+                                    onDeleteClick = { showDeleteDialog = it },
+                                    reminderMessage = shelfReminderMessage(shelf, itemStatuses, itemDays)
+                                )
+                            }
+                        }
+                    }
                 }
             }
+
+            val voiceBusy = voiceInputState.isBusy()
+            VoiceHandle(
+                busy = voiceBusy,
+                onClick = onVoiceClick,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 18.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = 14.dp)
+            )
         }
+    }
+
+    showConsumeMenuFor?.let { item ->
+        ConsumeActionSheet(
+            item = item,
+            onDismiss = { showConsumeMenuFor = null },
+            onConsume = { type ->
+                showConsumeMenuFor = null
+                viewModel.markAsConsumed(item, type)
+            }
+        )
     }
 
     showDeleteDialog?.let { item ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("删除物品") },
+            title = { Text("撕下标签") },
             text = { Text("确定删除“${item.name}”？此操作不可撤销。") },
             confirmButton = {
                 TextButton(
@@ -315,7 +422,9 @@ fun HomeScreen(
                 TextButton(onClick = { showDeleteDialog = null }) {
                     Text("取消")
                 }
-            }
+            },
+            containerColor = SurfaceClean,
+            shape = FreshCornerLarge
         )
     }
 
@@ -341,7 +450,9 @@ fun HomeScreen(
                     TextButton(onClick = viewModel::dismissUpdateCheckState) {
                         Text("稍后")
                     }
-                }
+                },
+                containerColor = SurfaceClean,
+                shape = FreshCornerLarge
             )
         }
         is UpdateCheckState.UpToDate -> {
@@ -353,7 +464,9 @@ fun HomeScreen(
                     TextButton(onClick = viewModel::dismissUpdateCheckState) {
                         Text("知道了")
                     }
-                }
+                },
+                containerColor = SurfaceClean,
+                shape = FreshCornerLarge
             )
         }
         is UpdateCheckState.Error -> {
@@ -365,14 +478,16 @@ fun HomeScreen(
                     TextButton(onClick = viewModel::dismissUpdateCheckState) {
                         Text("知道了")
                     }
-                }
+                },
+                containerColor = SurfaceClean,
+                shape = FreshCornerLarge
             )
         }
         UpdateCheckState.Checking,
         UpdateCheckState.Idle -> Unit
     }
 
-    VoiceInputDialog(
+    VoiceInputSheet(
         voiceInputState = voiceInputState,
         onConfirm = viewModel::confirmVoiceAction,
         onCancel = cancelVoiceRecognition,
@@ -382,322 +497,748 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader(
+private fun HomeTopBar(
     activeCount: Int,
-    searchQuery: String,
-    onSearchChange: (String) -> Unit,
     updateCheckState: UpdateCheckState,
     onCheckUpdates: () -> Unit,
-    voiceInputState: VoiceInputState,
-    onVoiceClick: () -> Unit,
-    onStatsClick: () -> Unit
+    onStatsClick: () -> Unit,
+    onInspectClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(
-                    text = "及时用",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = if (activeCount > 0) "$activeCount 件物品正在管理" else "从第一件物品开始管理",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    IconButton(
-                        onClick = onCheckUpdates,
-                        enabled = updateCheckState !is UpdateCheckState.Checking
-                    ) {
-                        if (updateCheckState is UpdateCheckState.Checking) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.SystemUpdateAlt,
-                                contentDescription = "检查更新",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    IconButton(onClick = onStatsClick) {
-                        Icon(
-                            imageVector = Icons.Default.BarChart,
-                            contentDescription = "统计",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "及时用",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = if (activeCount > 0) "$activeCount 件物品贴在保鲜墙上" else "从第一张保鲜标签开始",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(start = 10.dp)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = onSearchChange,
-                placeholder = { Text("搜索名称、备注") },
-                singleLine = true,
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null
-                    )
-                },
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = null
-                    )
-                },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
-            )
-
-            val voiceBusy = voiceInputState is VoiceInputState.Listening ||
-                    voiceInputState is VoiceInputState.Recognizing ||
-                    voiceInputState is VoiceInputState.Parsing ||
-                    voiceInputState is VoiceInputState.Executing
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primary
+            PaperIconButton(
+                onClick = onCheckUpdates,
+                enabled = updateCheckState !is UpdateCheckState.Checking
             ) {
-                IconButton(
-                    onClick = onVoiceClick,
-                    enabled = !voiceBusy
-                ) {
-                    if (voiceBusy) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(22.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = "语音库存操作",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                if (updateCheckState is UpdateCheckState.Checking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = BrandPrimary
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdateAlt,
+                        contentDescription = "检查更新",
+                        tint = BrandPrimary
+                    )
                 }
+            }
+            PaperIconButton(onClick = onInspectClick) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "小用巡视",
+                    tint = BrandPrimary
+                )
+            }
+            PaperIconButton(onClick = onStatsClick) {
+                Icon(
+                    imageVector = Icons.Default.BarChart,
+                    contentDescription = "少浪费报告",
+                    tint = BrandPrimary
+                )
             }
         }
     }
 }
 
 @Composable
-private fun VoiceInputDialog(
+private fun PaperIconButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        modifier = Modifier.size(42.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = SurfaceClean.copy(alpha = 0.74f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.16f))
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            content = { content() }
+        )
+    }
+}
+
+@Composable
+private fun TodayFreshnessBoard(
+    urgentCount: Int,
+    warningCount: Int,
+    freshCount: Int,
+    expiredCount: Int,
+    topItems: List<Item>,
+    itemDays: Map<Item, Int>,
+    totalCount: Int
+) {
+    FoldedPaperSurface(
+        modifier = Modifier.fillMaxWidth(),
+        color = SurfaceClean.copy(alpha = 0.92f),
+        borderColor = OutlineSoft.copy(alpha = 0.9f)
+    ) {
+        Column(
+            modifier = Modifier.padding(17.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "今日保鲜看板",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = BrandPrimary
+            )
+            Text(
+                text = if (urgentCount > 0) "优先处理 $urgentCount 件" else "今天不用急",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                text = todayBoardCopy(topItems, itemDays, totalCount),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+            )
+            FreshnessHeatBar(
+                stableCount = freshCount,
+                warningCount = warningCount,
+                expiredCount = expiredCount,
+                modifier = Modifier.padding(top = 3.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                HeatLegend("稳定", StatusFresh)
+                HeatLegend("临期", StatusWarning)
+                HeatLegend("过期", StatusCritical)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeatLegend(
+    label: String,
+    color: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .background(color, RoundedCornerShape(999.dp))
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun TimeShelfSection(
+    shelf: TimeShelfGroup,
+    itemStatuses: Map<Item, ExpiryStatus>,
+    itemDays: Map<Item, Int>,
+    onItemClick: (Item) -> Unit,
+    onConsumeClick: (Item) -> Unit,
+    onDeleteClick: (Item) -> Unit,
+    reminderMessage: String?
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        ShelfHeader(
+            title = shelf.title,
+            countText = "${shelf.items.size} 件",
+            color = shelf.color,
+            modifier = Modifier.padding(horizontal = 2.dp)
+        )
+        reminderMessage?.let { message ->
+            ShelfAssistantNudge(
+                message = message,
+                color = shelf.color
+            )
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(end = 8.dp)
+        ) {
+            items(
+                items = shelf.items,
+                key = { it.id }
+            ) { item ->
+                FreshnessLabelCard(
+                    item = item,
+                    expiryStatus = itemStatuses[item] ?: ExpiryStatus.FRESH,
+                    daysUntilExpiry = itemDays[item] ?: 0,
+                    onClick = { onItemClick(item) },
+                    modifier = Modifier.width(214.dp),
+                    actions = {
+                        LabelActionButton(
+                            icon = Icons.Default.CheckCircle,
+                            text = "处理",
+                            color = BrandPrimary,
+                            onClick = { onConsumeClick(item) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        LabelActionButton(
+                            icon = Icons.Default.DeleteOutline,
+                            text = "删除",
+                            color = MaterialTheme.colorScheme.error,
+                            onClick = { onDeleteClick(item) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShelfAssistantNudge(
+    message: String,
+    color: Color
+) {
+    FoldedPaperSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(
+            topStart = 18.dp,
+            topEnd = 18.dp,
+            bottomEnd = 18.dp,
+            bottomStart = 7.dp
+        ),
+        color = SurfaceClean.copy(alpha = 0.78f),
+        borderColor = color.copy(alpha = 0.2f),
+        foldColor = BrandSoft
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            AssistantFace(boxSize = 30.dp)
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = BrandPrimaryDark,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RowScope.LabelActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(999.dp),
+        color = color.copy(alpha = 0.1f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyFreshnessWall(
+    filtered: Boolean,
+    onAddClick: () -> Unit,
+    onVoiceClick: () -> Unit
+) {
+    FoldedPaperSurface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        color = SurfaceClean.copy(alpha = 0.74f),
+        borderColor = OutlineSoft.copy(alpha = 0.8f)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            AssistantFace(boxSize = 54.dp)
+            Text(
+                text = if (filtered) "这面墙上没有匹配标签" else "还没有贴保鲜标签",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = if (filtered) "换个关键词或分类看看。" else "贴第一张标签后，小用会按到期时间帮你摆上货架。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onAddClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("贴第一张标签")
+                }
+                OutlinedButton(
+                    onClick = onVoiceClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("对小用说一句")
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConsumeActionSheet(
+    item: Item,
+    onDismiss: () -> Unit,
+    onConsume: (ConsumeType) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = SurfaceClean,
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            AssistantNote(
+                title = "小用确认",
+                message = "要把“${item.name}”标记成哪种处理结果？"
+            )
+            ConsumeType.entries.forEach { type ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onConsume(type) },
+                    shape = RoundedCornerShape(18.dp),
+                    color = type.consumeColor().copy(alpha = 0.09f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, type.consumeColor().copy(alpha = 0.18f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = type.consumeIcon(),
+                            contentDescription = null,
+                            tint = type.consumeColor(),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = type.displayName,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = InkMuted
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VoiceInputSheet(
     voiceInputState: VoiceInputState,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
     onCandidateSelected: (Item) -> Unit
 ) {
-    when (voiceInputState) {
-        VoiceInputState.Idle -> Unit
-        VoiceInputState.Listening,
-        VoiceInputState.Recognizing,
-        is VoiceInputState.Parsing,
-        is VoiceInputState.Executing -> {
-            val isExecuting = voiceInputState is VoiceInputState.Executing
-            AlertDialog(
-                onDismissRequest = {
-                    if (!isExecuting) {
-                        onCancel()
-                    }
-                },
-                title = { Text(voiceStateTitle(voiceInputState)) },
-                text = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                        Text(voiceStateMessage(voiceInputState))
-                    }
-                },
-                confirmButton = {
-                    if (!isExecuting) {
-                        TextButton(onClick = onCancel) {
+    if (voiceInputState == VoiceInputState.Idle) return
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val dismiss: () -> Unit = {
+        if (voiceInputState.isExecuting()) {
+            Unit
+        } else {
+            onDismiss()
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = dismiss,
+        sheetState = sheetState,
+        containerColor = SurfaceClean,
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            AssistantNote(
+                title = "小用助手",
+                message = voiceSheetMessage(voiceInputState)
+            )
+
+            when (voiceInputState) {
+                VoiceInputState.Listening,
+                VoiceInputState.Recognizing,
+                is VoiceInputState.Parsing,
+                is VoiceInputState.Executing -> {
+                    VoiceWave()
+                    if (!voiceInputState.isExecuting()) {
+                        OutlinedButton(
+                            onClick = onCancel,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
                             Text("取消")
                         }
                     }
                 }
-            )
-        }
-        is VoiceInputState.PendingConfirmation -> {
-            AlertDialog(
-                onDismissRequest = onDismiss,
-                title = { Text("确认语音操作") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            text = "识别文本：${voiceInputState.recognizedText}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "将执行：\n${voiceActionPreview(voiceInputState.action, voiceInputState.matchedItem)}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        PlanningDiagnosticsText(voiceInputState.diagnostics)
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = onConfirm) {
-                        Text("确认执行")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = onDismiss) {
-                        Text("取消")
+                is VoiceInputState.PendingConfirmation -> {
+                    UnderstandCard(
+                        rows = listOf(
+                            "识别到" to voiceInputState.recognizedText,
+                            "动作" to voiceActionTitle(voiceInputState.action),
+                            "结果" to voiceActionPreview(voiceInputState.action, voiceInputState.matchedItem)
+                        ),
+                        diagnostics = voiceInputState.diagnostics
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("重说")
+                        }
+                        Button(
+                            onClick = onConfirm,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("确认再改")
+                        }
                     }
                 }
-            )
-        }
-        is VoiceInputState.NeedsSelection -> {
-            AlertDialog(
-                onDismissRequest = onDismiss,
-                title = { Text("选择库存") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(voiceInputState.message)
-                        Text(
-                            text = "识别文本：${voiceInputState.recognizedText}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        PlanningDiagnosticsText(voiceInputState.diagnostics)
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 280.dp)
-                        ) {
-                            items(
-                                items = voiceInputState.candidates,
-                                key = { it.id }
-                            ) { item ->
-                                TextButton(
-                                    onClick = { onCandidateSelected(item) },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "${item.name} · 剩余 ${(item.quantity - item.usedQuantity).coerceAtLeast(0)} · ${DateUtils.formatShort(item.expirationDate)}过期",
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
+                is VoiceInputState.NeedsSelection -> {
+                    UnderstandCard(
+                        rows = listOf(
+                            "识别到" to voiceInputState.recognizedText,
+                            "需要" to voiceInputState.message
+                        ),
+                        diagnostics = voiceInputState.diagnostics
+                    )
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 280.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            items = voiceInputState.candidates,
+                            key = { it.id }
+                        ) { item ->
+                            FoldedPaperSurface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onCandidateSelected(item) },
+                                shape = RoundedCornerShape(18.dp),
+                                color = SurfaceSoft
+                            ) {
+                                Text(
+                                    text = "${item.name} · 剩余 ${(item.quantity - item.usedQuantity).coerceAtLeast(0)} · ${DateUtils.formatShort(item.expirationDate)}过期",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(14.dp)
+                                )
                             }
                         }
                     }
-                },
-                confirmButton = {},
-                dismissButton = {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
                         Text("取消")
                     }
                 }
-            )
-        }
-        is VoiceInputState.Success -> {
-            AlertDialog(
-                onDismissRequest = onDismiss,
-                title = { Text("操作完成") },
-                text = { Text(voiceInputState.message) },
-                confirmButton = {
-                    TextButton(onClick = onDismiss) {
+                is VoiceInputState.Success -> {
+                    UnderstandCard(rows = listOf("结果" to voiceInputState.message))
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
                         Text("知道了")
                     }
                 }
-            )
-        }
-        is VoiceInputState.Error -> {
-            AlertDialog(
-                onDismissRequest = onDismiss,
-                title = { Text("语音操作失败") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        voiceInputState.recognizedText?.let {
-                            Text(
-                                text = "识别文本：$it",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Text(voiceInputState.message)
+                is VoiceInputState.Error -> {
+                    val rows = buildList {
+                        voiceInputState.recognizedText?.let { add("识别到" to it) }
+                        add("结果" to voiceInputState.message)
                     }
-                },
-                confirmButton = {
-                    TextButton(onClick = onDismiss) {
+                    UnderstandCard(rows = rows)
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
                         Text("知道了")
                     }
                 }
+                VoiceInputState.Idle -> Unit
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun VoiceWave() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        listOf(18.dp, 36.dp, 52.dp, 31.dp, 44.dp, 24.dp).forEach { height ->
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 3.dp)
+                    .width(9.dp)
+                    .height(height)
+                    .background(BrandPrimary, RoundedCornerShape(999.dp))
             )
         }
     }
 }
 
 @Composable
-private fun PlanningDiagnosticsText(diagnostics: List<InventoryPlanningDiagnostic>) {
-    diagnostics
-        .filter { it.message.isNotBlank() }
-        .forEach { diagnostic ->
-            Text(
-                text = diagnostic.message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+private fun UnderstandCard(
+    rows: List<Pair<String, String>>,
+    diagnostics: List<InventoryPlanningDiagnostic> = emptyList()
+) {
+    FoldedPaperSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(21.dp),
+        color = BrandSoft.copy(alpha = 0.62f),
+        borderColor = BrandPrimary.copy(alpha = 0.16f)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            rows.forEachIndexed { index, (label, value) ->
+                if (index > 0) {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(BrandPrimary.copy(alpha = 0.12f))
+                    )
+                }
+                Row(
+                    modifier = Modifier.padding(vertical = 9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(58.dp)
+                    )
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            diagnostics
+                .filter { it.message.isNotBlank() }
+                .forEach { diagnostic ->
+                    Text(
+                        text = diagnostic.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
         }
-}
-
-private fun voiceStateTitle(state: VoiceInputState): String {
-    return when (state) {
-        VoiceInputState.Listening -> "待说话"
-        VoiceInputState.Recognizing -> "识别中"
-        is VoiceInputState.Parsing -> "解析中"
-        is VoiceInputState.Executing -> "执行中"
-        else -> ""
     }
 }
 
-private fun voiceStateMessage(state: VoiceInputState): String {
+private data class TimeShelfGroup(
+    val title: String,
+    val color: Color,
+    val items: List<Item>
+)
+
+private fun buildTimeShelves(
+    items: List<Item>,
+    itemDays: Map<Item, Int>
+): List<TimeShelfGroup> {
+    val today = items.filter { (itemDays[it] ?: 0) <= 0 }
+    val tomorrow = items.filter { (itemDays[it] ?: 0) == 1 }
+    val threeDays = items.filter { (itemDays[it] ?: 0) in 2..3 }
+    val thisWeek = items.filter { (itemDays[it] ?: 0) in 4..7 }
+    val later = items.filter { (itemDays[it] ?: 0) > 7 }
+    return listOf(
+        TimeShelfGroup("今天", StatusCritical, today),
+        TimeShelfGroup("明天", StatusUrgent, tomorrow),
+        TimeShelfGroup("3 天内", StatusWarning, threeDays),
+        TimeShelfGroup("本周", StatusFresh, thisWeek),
+        TimeShelfGroup("更晚", BrandPrimary, later)
+    )
+}
+
+private fun todayBoardCopy(
+    topItems: List<Item>,
+    itemDays: Map<Item, Int>,
+    totalCount: Int
+): String {
+    if (totalCount == 0) return "保鲜墙还空着，贴一张标签就能开始提醒。"
+    if (topItems.isEmpty()) return "当前筛选下没有需要看的物品。"
+    val names = topItems.take(3).joinToString("、") { it.name }
+    val first = topItems.first()
+    val firstDays = itemDays[first] ?: 0
+    return when {
+        firstDays < 0 -> "$names 已经过期，先确认还能不能用。"
+        firstDays == 0 -> "${first.name} 今天到期，$names 可以先安排。"
+        firstDays <= 3 -> "$names 快到提醒线了，少量处理最稳。"
+        else -> "$names 状态稳定，今天可以慢慢看。"
+    }
+}
+
+private fun shelfReminderMessage(
+    shelf: TimeShelfGroup,
+    itemStatuses: Map<Item, ExpiryStatus>,
+    itemDays: Map<Item, Int>
+): String? {
+    val first = shelf.items.firstOrNull() ?: return null
+    val firstDays = itemDays[first] ?: 0
+    val hasExpired = shelf.items.any { itemStatuses[it] == ExpiryStatus.EXPIRED }
+    val hasUrgent = shelf.items.any {
+        val status = itemStatuses[it]
+        status == ExpiryStatus.EXPIRING_CRITICAL || status == ExpiryStatus.EXPIRING_SOON
+    }
+    return when {
+        hasExpired -> "小用看过了，这组有过期标签，先确认 ${first.name}。"
+        shelf.title == "今天" -> "今天这组先看 ${first.name}，处理前我会帮你确认。"
+        hasUrgent -> "${first.name} 快到提醒线了，这组可以提前安排。"
+        firstDays == 1 -> "明天到期的先摆在这里，明早我再提醒你。"
+        else -> null
+    }
+}
+
+private fun assistantHomeMessage(
+    firstItem: Item?,
+    itemDays: Map<Item, Int>
+): String {
+    if (firstItem == null) return "我在这儿，等你贴第一张保鲜标签。"
+    val days = itemDays[firstItem] ?: 0
+    return when {
+        days < 0 -> "我看过了，${firstItem.name} 已过期，先确认一下最稳。"
+        days == 0 -> "我看过了，今天先处理 ${firstItem.name} 最稳。"
+        days <= 3 -> "${firstItem.name} 快到提醒线了，可以提前安排。"
+        else -> "这面墙今天挺稳，我会继续帮你看着。"
+    }
+}
+
+private fun VoiceInputState.isBusy(): Boolean {
+    return this is VoiceInputState.Listening ||
+            this is VoiceInputState.Recognizing ||
+            this is VoiceInputState.Parsing ||
+            this is VoiceInputState.Executing
+}
+
+private fun VoiceInputState.isExecuting(): Boolean = this is VoiceInputState.Executing
+
+private fun voiceSheetMessage(state: VoiceInputState): String {
     return when (state) {
-        VoiceInputState.Listening -> "请说出要新增、消耗或丢弃的库存"
-        VoiceInputState.Recognizing -> "正在识别语音内容"
+        VoiceInputState.Listening -> "我在听，可以直接说库存变化。"
+        VoiceInputState.Recognizing -> "正在把语音转成文字。"
         is VoiceInputState.Parsing -> "${state.messagePrefix}：${state.recognizedText}"
-        is VoiceInputState.Executing -> "正在执行语音操作"
-        else -> ""
+        is VoiceInputState.Executing -> "正在执行确认过的库存操作。"
+        is VoiceInputState.PendingConfirmation -> "我整理好了，确认后再改库存。"
+        is VoiceInputState.NeedsSelection -> "这句有几个可能的库存，请选一个。"
+        is VoiceInputState.Success -> "操作完成。"
+        is VoiceInputState.Error -> "这句没听清，没有改库存。"
+        VoiceInputState.Idle -> ""
+    }
+}
+
+private fun voiceActionTitle(action: InventoryAction): String {
+    return when (action) {
+        is InventoryAction.AddItem -> "新增标签"
+        is InventoryAction.ConsumeItem -> "使用物品"
+        is InventoryAction.DiscardItem -> "丢弃物品"
+        is InventoryAction.AskClarification -> "需要确认"
     }
 }
 
@@ -709,7 +1250,13 @@ private fun voiceActionPreview(action: InventoryAction, matchedItem: Item?): Str
         }
         is InventoryAction.ConsumeItem -> {
             val itemName = matchedItem?.name ?: action.itemName
-            "消耗 $itemName x${action.quantity}"
+            val before = matchedItem?.let { (it.quantity - it.usedQuantity).coerceAtLeast(0) }
+            val after = before?.let { (it - action.quantity).coerceAtLeast(0) }
+            if (before != null && after != null) {
+                "$itemName 剩余 $before -> $after"
+            } else {
+                "消耗 $itemName x${action.quantity}"
+            }
         }
         is InventoryAction.DiscardItem -> {
             val itemName = matchedItem?.name ?: action.itemName
@@ -731,81 +1278,5 @@ private fun speechErrorText(error: Int): String {
         SpeechRecognizer.ERROR_SERVER -> "语音识别服务异常，请稍后再试"
         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "没有听到语音，请重试"
         else -> "语音识别失败，请重试"
-    }
-}
-
-@Composable
-private fun InventorySectionHeader(
-    count: Int,
-    hasFilters: Boolean
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                text = if (hasFilters) "筛选结果" else "待处理清单",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "按到期时间从近到远排列",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Text(
-            text = "$count 件",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-    Spacer(modifier = Modifier.height(8.dp))
-}
-
-@Composable
-private fun EmptyState(
-    message: String,
-    subtitle: String,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 40.dp, vertical = 56.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Surface(
-            modifier = Modifier.size(58.dp),
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Default.Inventory2,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
     }
 }
