@@ -7,6 +7,7 @@ import com.jishiyong.JiShiYongApp
 import com.jishiyong.agent.InventoryActionExecutor
 import com.jishiyong.agent.InventoryActionStore
 import com.jishiyong.agent.InventoryAgent
+import com.jishiyong.agent.InventoryAgentFactory
 import com.jishiyong.agent.VoiceInputState
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
@@ -31,7 +32,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: ItemRepository =
         (application as JiShiYongApp).repository
     private val updateChecker = AppUpdateChecker()
-    private val inventoryAgent = InventoryAgent()
+    private val inventoryAgent: InventoryAgent = InventoryAgentFactory.createDefault(application)
     private val actionExecutor = InventoryActionExecutor()
     private val actionStore = object : InventoryActionStore {
         override suspend fun insert(item: Item): Long = repository.insert(item)
@@ -163,7 +164,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         voiceParseJob?.cancel()
-        _voiceInputState.value = VoiceInputState.Parsing(text)
+        _voiceInputState.value = VoiceInputState.Parsing(
+            recognizedText = text,
+            parserLabel = inventoryAgent.mode.displayName,
+            messagePrefix = inventoryAgent.mode.parsingMessagePrefix
+        )
         voiceParseJob = viewModelScope.launch {
             val itemsSnapshot = try {
                 repository.getActiveItems().first()
@@ -172,7 +177,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (_: Exception) {
                 allActiveItems.value
             }
-            val preview = inventoryAgent.preview(text, itemsSnapshot)
+            val preview = try {
+                inventoryAgent.previewWithPlanning(text, itemsSnapshot)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
+                VoiceInputState.Error("${inventoryAgent.mode.displayName}解析失败，请稍后再试", text)
+            }
             val current = _voiceInputState.value
             if (current is VoiceInputState.Parsing && current.recognizedText == text) {
                 _voiceInputState.value = preview
@@ -205,11 +216,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val pending = _voiceInputState.value as? VoiceInputState.PendingConfirmation ?: return
         _voiceInputState.value = VoiceInputState.Executing(pending.recognizedText)
         viewModelScope.launch {
-            _voiceInputState.value = try {
-                actionExecutor.execute(pending, actionStore)
+            val result = try {
+                val executionState = actionExecutor.execute(pending, actionStore)
+                if (executionState is VoiceInputState.Success) {
+                    inventoryAgent.rememberSuccessfulAction(pending)
+                }
+                executionState
+            } catch (exception: CancellationException) {
+                throw exception
             } catch (_: Exception) {
                 VoiceInputState.Error("语音操作执行失败，请稍后再试", pending.recognizedText)
             }
+            _voiceInputState.value = result
         }
     }
 

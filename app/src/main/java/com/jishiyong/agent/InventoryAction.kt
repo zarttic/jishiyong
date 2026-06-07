@@ -9,12 +9,14 @@ sealed class InventoryAction {
 
     data class ConsumeItem(
         val itemName: String,
-        val quantity: Int
+        val quantity: Int,
+        val itemId: Long? = null
     ) : InventoryAction()
 
     data class DiscardItem(
         val itemName: String,
-        val quantity: Int
+        val quantity: Int,
+        val itemId: Long? = null
     ) : InventoryAction()
 
     data class AskClarification(

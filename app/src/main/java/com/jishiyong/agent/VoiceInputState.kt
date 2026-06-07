@@ -6,7 +6,11 @@ sealed class VoiceInputState {
     data object Idle : VoiceInputState()
     data object Listening : VoiceInputState()
     data object Recognizing : VoiceInputState()
-    data class Parsing(val recognizedText: String) : VoiceInputState()
+    data class Parsing(
+        val recognizedText: String,
+        val parserLabel: String = InventoryAgentMode.LOCAL_RULES.displayName,
+        val messagePrefix: String = InventoryAgentMode.LOCAL_RULES.parsingMessagePrefix
+    ) : VoiceInputState()
 
     data class PendingConfirmation(
         val recognizedText: String,

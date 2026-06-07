@@ -679,7 +679,7 @@ private fun voiceStateMessage(state: VoiceInputState): String {
     return when (state) {
         VoiceInputState.Listening -> "请说出要新增、消耗或丢弃的库存"
         VoiceInputState.Recognizing -> "正在识别语音内容"
-        is VoiceInputState.Parsing -> "正在解析：${state.recognizedText}"
+        is VoiceInputState.Parsing -> "${state.messagePrefix}：${state.recognizedText}"
         is VoiceInputState.Executing -> "正在执行语音操作"
         else -> ""
     }

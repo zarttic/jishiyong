@@ -1,14 +1,56 @@
 package com.jishiyong.agent
 
 import com.jishiyong.data.db.entity.Item
+import kotlinx.coroutines.CancellationException
 
 class InventoryAgent(
-    private val parser: InventoryCommandParser = InventoryCommandParser()
+    private val planner: InventoryActionPlanner = RuleBasedInventoryActionPlanner(),
+    private val memoryStore: AgentMemoryStore = EmptyAgentMemoryStore,
+    private val parser: InventoryCommandParser = InventoryCommandParser(),
+    val mode: InventoryAgentMode = InventoryAgentMode.LOCAL_RULES
 ) {
 
     fun preview(text: String, activeItems: List<Item>): VoiceInputState {
         val action = parser.parse(text)
         return preview(text, action, activeItems)
+    }
+
+    suspend fun previewWithPlanning(
+        text: String,
+        activeItems: List<Item>
+    ): VoiceInputState {
+        val memories = try {
+            memoryStore.relevantMemoriesFor(text, activeItems)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            emptyList()
+        }
+        val request = InventoryAgentRequest(
+            recognizedText = text,
+            activeItems = activeItems,
+            memories = memories
+        )
+        return preview(request)
+    }
+
+    suspend fun preview(request: InventoryAgentRequest): VoiceInputState {
+        val action = planner.plan(request)
+        return preview(request.recognizedText, action, request.activeItems)
+    }
+
+    suspend fun rememberSuccessfulAction(pending: VoiceInputState.PendingConfirmation) {
+        try {
+            memoryStore.rememberSuccessfulAction(
+                recognizedText = pending.recognizedText,
+                action = pending.action,
+                matchedItem = pending.matchedItem
+            )
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            // A memory write should never affect an already confirmed inventory operation.
+        }
     }
 
     fun preview(
@@ -26,10 +68,10 @@ class InventoryAgent(
                 }
             }
             is InventoryAction.ConsumeItem -> {
-                previewInventoryChange(recognizedText, action, activeItems, action.itemName, action.quantity)
+                previewInventoryChange(recognizedText, action, activeItems, action.itemName, action.quantity, action.itemId)
             }
             is InventoryAction.DiscardItem -> {
-                previewInventoryChange(recognizedText, action, activeItems, action.itemName, action.quantity)
+                previewInventoryChange(recognizedText, action, activeItems, action.itemName, action.quantity, action.itemId)
             }
             is InventoryAction.AskClarification -> VoiceInputState.Error(action.message, recognizedText)
         }
@@ -38,14 +80,26 @@ class InventoryAgent(
     fun matchItem(
         itemName: String,
         quantity: Int,
-        activeItems: List<Item>
+        activeItems: List<Item>,
+        itemId: Long? = null
     ): InventoryMatchResult {
+        if (quantity <= 0) {
+            return InventoryMatchResult.NotFound("数量必须大于 0")
+        }
+
+        val itemById = itemId?.let { id -> activeItems.firstOrNull { it.id == id } }
+        if (itemById != null) {
+            val remainingQuantity = itemById.remainingQuantity()
+            return if (remainingQuantity >= quantity) {
+                InventoryMatchResult.Matched(itemById)
+            } else {
+                InventoryMatchResult.NotFound("“${itemById.name}”剩余 $remainingQuantity，不能操作 $quantity")
+            }
+        }
+
         val normalizedName = normalize(itemName)
         if (normalizedName.isBlank()) {
             return InventoryMatchResult.NotFound("请确认物品名称")
-        }
-        if (quantity <= 0) {
-            return InventoryMatchResult.NotFound("数量必须大于 0")
         }
 
         val availableItems = activeItems
@@ -95,9 +149,10 @@ class InventoryAgent(
         action: InventoryAction,
         activeItems: List<Item>,
         itemName: String,
-        quantity: Int
+        quantity: Int,
+        itemId: Long? = null
     ): VoiceInputState {
-        return when (val match = matchItem(itemName, quantity, activeItems)) {
+        return when (val match = matchItem(itemName, quantity, activeItems, itemId)) {
             is InventoryMatchResult.Matched -> {
                 val remainingQuantity = match.item.remainingQuantity()
                 if (quantity > remainingQuantity) {
