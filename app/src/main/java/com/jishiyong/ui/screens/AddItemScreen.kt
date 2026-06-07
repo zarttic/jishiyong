@@ -2,6 +2,7 @@ package com.jishiyong.ui.screens
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -60,15 +62,18 @@ import com.jishiyong.data.repository.ExpiryStatus
 import com.jishiyong.ui.components.AssistantNote
 import com.jishiyong.ui.components.CategoryStamp
 import com.jishiyong.ui.components.FoldedPaperSurface
+import com.jishiyong.ui.components.FreshBackdropStyle
 import com.jishiyong.ui.components.FreshnessLabelCard
 import com.jishiyong.ui.components.FridgeDoorBackdrop
 import com.jishiyong.ui.components.PaperSection
 import com.jishiyong.ui.components.StatusPill
 import com.jishiyong.ui.components.categoryColor
 import com.jishiyong.ui.theme.BrandPrimary
+import com.jishiyong.ui.theme.BrandPrimaryDark
 import com.jishiyong.ui.theme.BrandSoft
 import com.jishiyong.ui.theme.OutlineSoft
 import com.jishiyong.ui.theme.SurfaceClean
+import com.jishiyong.ui.theme.SurfaceSoft
 import com.jishiyong.util.DateUtils
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -79,6 +84,7 @@ import java.util.Calendar
 fun AddItemScreen(
     onSave: (Item) -> Unit,
     onCancel: () -> Unit,
+    backdropStyle: FreshBackdropStyle = FreshBackdropStyle.ColdMist,
     modifier: Modifier = Modifier
 ) {
     var name by remember { mutableStateOf("") }
@@ -138,7 +144,8 @@ fun AddItemScreen(
         FridgeDoorBackdrop(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            style = backdropStyle
         ) {
             Column(
                 modifier = Modifier
@@ -314,12 +321,14 @@ private fun LabelPrinterPreview(
 ) {
     FoldedPaperSurface(
         modifier = Modifier.fillMaxWidth(),
-        color = SurfaceClean.copy(alpha = 0.9f),
-        borderColor = OutlineSoft.copy(alpha = 0.9f)
+        shape = RoundedCornerShape(26.dp),
+        color = SurfaceClean.copy(alpha = 0.88f),
+        borderColor = BrandPrimary.copy(alpha = 0.16f),
+        foldColor = BrandSoft
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -333,15 +342,62 @@ private fun LabelPrinterPreview(
                     color = BrandPrimary
                 )
                 StatusPill(
-                    text = "打印中",
+                    text = "打印预览",
                     color = BrandPrimary
                 )
             }
-            FreshnessLabelCard(
-                item = item,
-                expiryStatus = expiryStatus,
-                daysUntilExpiry = daysUntilExpiry,
-                large = true
+            PrinterSlot()
+            Box(modifier = Modifier.padding(horizontal = 6.dp)) {
+                FreshnessLabelCard(
+                    item = item,
+                    expiryStatus = expiryStatus,
+                    daysUntilExpiry = daysUntilExpiry,
+                    large = true
+                )
+            }
+            Text(
+                text = "确认内容后再贴上墙，小用不会直接改库存。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun PrinterSlot() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = BrandPrimaryDark
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "标签打印机",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+                Box(
+                    modifier = Modifier
+                        .width(42.dp)
+                        .height(5.dp)
+                        .background(BrandSoft.copy(alpha = 0.62f), RoundedCornerShape(999.dp))
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .background(SurfaceSoft.copy(alpha = 0.22f), RoundedCornerShape(999.dp))
             )
         }
     }

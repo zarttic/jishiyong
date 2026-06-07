@@ -15,6 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +32,7 @@ import com.jishiyong.ui.screens.HomeScreen
 import com.jishiyong.ui.screens.InspectionScreen
 import com.jishiyong.ui.screens.ItemDetailScreen
 import com.jishiyong.ui.screens.StatisticsScreen
+import com.jishiyong.ui.components.FreshBackdropStyle
 import com.jishiyong.ui.theme.JiShiYongTheme
 import com.jishiyong.viewmodel.MainViewModel
 import com.jishiyong.viewmodel.StatisticsViewModel
@@ -72,6 +76,9 @@ fun JiShiYongNavigation() {
     val navController = rememberNavController()
     val mainViewModel: MainViewModel = viewModel()
     val operationError by mainViewModel.operationError.collectAsStateWithLifecycle()
+    var backdropStyleName by rememberSaveable { mutableStateOf(FreshBackdropStyle.ColdMist.name) }
+    val backdropStyle = FreshBackdropStyle.entries.find { it.name == backdropStyleName }
+        ?: FreshBackdropStyle.ColdMist
 
     NavHost(
         navController = navController,
@@ -92,7 +99,9 @@ fun JiShiYongNavigation() {
                 },
                 onInspectClick = {
                     navController.navigate("inspection")
-                }
+                },
+                backdropStyle = backdropStyle,
+                onBackdropStyleSelected = { backdropStyleName = it.name }
             )
         }
 
@@ -106,7 +115,8 @@ fun JiShiYongNavigation() {
                 },
                 onCancel = {
                     navController.popBackStack()
-                }
+                },
+                backdropStyle = backdropStyle
             )
         }
 
@@ -121,7 +131,8 @@ fun JiShiYongNavigation() {
             ItemDetailScreen(
                 itemId = itemId,
                 viewModel = mainViewModel,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                backdropStyle = backdropStyle
             )
         }
 
@@ -130,7 +141,8 @@ fun JiShiYongNavigation() {
             val statisticsViewModel: StatisticsViewModel = viewModel()
             StatisticsScreen(
                 viewModel = statisticsViewModel,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                backdropStyle = backdropStyle
             )
         }
 
@@ -138,7 +150,8 @@ fun JiShiYongNavigation() {
         composable("inspection") {
             InspectionScreen(
                 viewModel = mainViewModel,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                backdropStyle = backdropStyle
             )
         }
     }

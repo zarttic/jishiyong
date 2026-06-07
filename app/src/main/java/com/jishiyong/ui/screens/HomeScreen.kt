@@ -80,8 +80,10 @@ import com.jishiyong.data.repository.ExpiryStatus
 import com.jishiyong.speech.BaiduCloudSpeechRecognizer
 import com.jishiyong.ui.components.AssistantFace
 import com.jishiyong.ui.components.AssistantNote
+import com.jishiyong.ui.components.BackdropStyleSelector
 import com.jishiyong.ui.components.CategoryFilterChips
 import com.jishiyong.ui.components.FoldedPaperSurface
+import com.jishiyong.ui.components.FreshBackdropStyle
 import com.jishiyong.ui.components.FreshCornerLarge
 import com.jishiyong.ui.components.FreshnessHeatBar
 import com.jishiyong.ui.components.FreshnessLabelCard
@@ -118,6 +120,8 @@ fun HomeScreen(
     onAddClick: () -> Unit,
     onStatsClick: () -> Unit,
     onInspectClick: () -> Unit,
+    backdropStyle: FreshBackdropStyle = FreshBackdropStyle.ColdMist,
+    onBackdropStyleSelected: (FreshBackdropStyle) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val activeItems by viewModel.activeItems.collectAsStateWithLifecycle()
@@ -323,7 +327,8 @@ fun HomeScreen(
         FridgeDoorBackdrop(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            style = backdropStyle
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -349,6 +354,13 @@ fun HomeScreen(
                         topItems = prioritizedItems.take(3),
                         itemDays = itemDays,
                         totalCount = totalCount
+                    )
+                }
+
+                item {
+                    BackgroundDirectionPanel(
+                        selectedStyle = backdropStyle,
+                        onStyleSelected = onBackdropStyleSelected
                     )
                 }
 
@@ -566,6 +578,53 @@ fun HomeScreen(
 }
 
 @Composable
+private fun BackgroundDirectionPanel(
+    selectedStyle: FreshBackdropStyle,
+    onStyleSelected: (FreshBackdropStyle) -> Unit
+) {
+    FoldedPaperSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = SurfaceClean.copy(alpha = 0.68f),
+        borderColor = OutlineSoft.copy(alpha = 0.72f),
+        foldColor = BrandSoft
+    ) {
+        Column(
+            modifier = Modifier.padding(13.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "背景方向",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = BrandPrimaryDark
+                    )
+                    Text(
+                        text = "点选后整面保鲜墙会一起更新",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                StatusPill(
+                    text = selectedStyle.displayName,
+                    color = BrandPrimary
+                )
+            }
+            BackdropStyleSelector(
+                selectedStyle = selectedStyle,
+                onStyleSelected = onStyleSelected
+            )
+        }
+    }
+}
+
+@Composable
 private fun HomeTopBar(
     activeCount: Int,
     updateCheckState: UpdateCheckState,
@@ -664,30 +723,66 @@ private fun TodayFreshnessBoard(
 ) {
     FoldedPaperSurface(
         modifier = Modifier.fillMaxWidth(),
-        color = SurfaceClean.copy(alpha = 0.92f),
-        borderColor = OutlineSoft.copy(alpha = 0.9f)
+        color = SurfaceClean.copy(alpha = 0.9f),
+        borderColor = BrandPrimary.copy(alpha = 0.18f),
+        foldColor = BrandSoft
     ) {
         Column(
-            modifier = Modifier.padding(17.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = "今日保鲜看板",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = BrandPrimary
-            )
-            Text(
-                text = if (urgentCount > 0) "优先处理 $urgentCount 件" else "今天不用急",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "今日保鲜看板",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = BrandPrimary
+                    )
+                    Text(
+                        text = if (urgentCount > 0) "优先处理 $urgentCount 件" else "今天不用急",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+                StatusPill(
+                    text = "$totalCount 张标签",
+                    color = BrandPrimary
+                )
+            }
             Text(
                 text = todayBoardCopy(topItems, itemDays, totalCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                BoardMetric(
+                    label = "稳定",
+                    count = freshCount,
+                    color = StatusFresh,
+                    modifier = Modifier.weight(1f)
+                )
+                BoardMetric(
+                    label = "临期",
+                    count = warningCount,
+                    color = StatusWarning,
+                    modifier = Modifier.weight(1f)
+                )
+                BoardMetric(
+                    label = "过期",
+                    count = expiredCount,
+                    color = StatusCritical,
+                    modifier = Modifier.weight(1f)
+                )
+            }
             FreshnessHeatBar(
                 stableCount = freshCount,
                 warningCount = warningCount,
@@ -701,6 +796,90 @@ private fun TodayFreshnessBoard(
                 HeatLegend("稳定", StatusFresh)
                 HeatLegend("临期", StatusWarning)
                 HeatLegend("过期", StatusCritical)
+            }
+            if (topItems.isNotEmpty()) {
+                PriorityLabelStrip(
+                    topItems = topItems,
+                    itemDays = itemDays
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoardMetric(
+    label: String,
+    count: Int,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = color.copy(alpha = 0.09f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.16f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = color
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun PriorityLabelStrip(
+    topItems: List<Item>,
+    itemDays: Map<Item, Int>
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(end = 4.dp)
+    ) {
+        items(topItems, key = { it.id }) { item ->
+            val days = itemDays[item] ?: 0
+            Surface(
+                shape = RoundedCornerShape(15.dp),
+                color = SurfaceSoft.copy(alpha = 0.72f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft.copy(alpha = 0.62f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(18.dp)
+                            .height(4.dp)
+                            .background(priorityColor(days), RoundedCornerShape(999.dp))
+                    )
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = compactDaysLabel(days),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = priorityColor(days),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -726,6 +905,24 @@ private fun HeatLegend(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+private fun priorityColor(daysUntilExpiry: Int): Color {
+    return when {
+        daysUntilExpiry < 0 -> StatusCritical
+        daysUntilExpiry == 0 -> StatusCritical
+        daysUntilExpiry <= 3 -> StatusWarning
+        else -> StatusFresh
+    }
+}
+
+private fun compactDaysLabel(daysUntilExpiry: Int): String {
+    return when {
+        daysUntilExpiry < 0 -> "过期${-daysUntilExpiry}天"
+        daysUntilExpiry == 0 -> "今天"
+        daysUntilExpiry == 1 -> "明天"
+        else -> "${daysUntilExpiry}天"
     }
 }
 
@@ -863,49 +1060,73 @@ private fun EmptyFreshnessWall(
     onAddClick: () -> Unit,
     onVoiceClick: () -> Unit
 ) {
-    FoldedPaperSurface(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp),
-        color = SurfaceClean.copy(alpha = 0.74f),
-        borderColor = OutlineSoft.copy(alpha = 0.8f)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 22.dp, vertical = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        FoldedPaperSurface(
+            modifier = Modifier.fillMaxWidth(),
+            color = SurfaceClean.copy(alpha = if (filtered) 0.72f else 0.58f),
+            borderColor = OutlineSoft.copy(alpha = 0.7f),
+            foldColor = BrandSoft.copy(alpha = 0.7f)
         ) {
-            AssistantFace(boxSize = 54.dp)
-            Text(
-                text = if (filtered) "这面墙上没有匹配标签" else "还没有贴保鲜标签",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = if (filtered) "换个关键词或分类看看。" else "贴第一张标签后，小用会按到期时间帮你摆上货架。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            Column(
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 26.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Button(
-                    onClick = onAddClick,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp)
+                Surface(
+                    shape = RoundedCornerShape(22.dp, 22.dp, 22.dp, 8.dp),
+                    color = BrandSoft.copy(alpha = 0.52f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.16f))
                 ) {
-                    Text("贴第一张标签")
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        AssistantFace(boxSize = 54.dp)
+                        Text(
+                            text = if (filtered) "没有匹配标签" else "第一张保鲜标签",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = if (filtered) "换个关键词或分类看看。" else "贴上以后，小用会按到期时间帮你摆上货架。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
-                OutlinedButton(
-                    onClick = onVoiceClick,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text("对小用说一句")
-                }
+                FreshnessHeatBar(
+                    stableCount = 1,
+                    warningCount = 1,
+                    expiredCount = 0,
+                    modifier = Modifier.padding(horizontal = 18.dp)
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Button(
+                onClick = onAddClick,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(if (filtered) "贴新标签" else "贴第一张标签")
+            }
+            OutlinedButton(
+                onClick = onVoiceClick,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("对小用说一句")
             }
         }
     }
