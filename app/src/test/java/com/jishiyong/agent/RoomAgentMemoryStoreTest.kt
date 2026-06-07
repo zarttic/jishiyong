@@ -81,5 +81,21 @@ class RoomAgentMemoryStoreTest {
         override suspend fun clearMemories() {
             memories.clear()
         }
+
+        override suspend fun replaceAllMemories(memories: List<AgentMemoryEntity>) {
+            clearFtsEntries()
+            clearMemories()
+            if (memories.isEmpty()) return
+
+            val ids = insertMemories(memories.map { it.copy(id = 0) })
+            insertFtsEntries(
+                ids.zip(memories).map { (id, memory) ->
+                    AgentMemoryFtsEntity(
+                        rowId = id,
+                        searchableText = memory.searchableText
+                    )
+                }
+            )
+        }
     }
 }
