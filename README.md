@@ -2,11 +2,7 @@
 
 一款帮助你管理物品保质期的 Android 应用，再也不用担心东西过期了！
 
-## 📚 AI Agent 文档知识库
-
-AI Agent 开发思路、架构拆解和实战文档已发布到：
-
-https://zarttic.github.io/jishiyong/
+AI Agent 文档知识库：[及时用 AI Agent 文档](https://zarttic.github.io/jishiyong/)。
 
 ## ✨ 功能特性
 
