@@ -3,11 +3,10 @@ package com.jishiyong.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.jishiyong.JiShiYongApp
+import com.jishiyong.AppContainerProvider
 import com.jishiyong.agent.InventoryActionExecutor
 import com.jishiyong.agent.InventoryActionStore
 import com.jishiyong.agent.InventoryAgent
-import com.jishiyong.agent.InventoryAgentFactory
 import com.jishiyong.agent.VoiceInputState
 import com.jishiyong.data.db.InventoryChangeResult
 import com.jishiyong.data.db.entity.ConsumeType
@@ -19,8 +18,12 @@ import com.jishiyong.update.AppUpdateChecker
 import com.jishiyong.update.UpdateCheckState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.ZonedDateTime
 
 sealed class ItemDetailUiState {
     data object Loading : ItemDetailUiState()
@@ -30,11 +33,15 @@ sealed class ItemDetailUiState {
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val container = (application as AppContainerProvider).container
     private val repository: ItemRepository =
-        (application as JiShiYongApp).repository
-    private val updateChecker = AppUpdateChecker()
-    private val inventoryAgent: InventoryAgent = InventoryAgentFactory.createDefault(application)
-    private val actionExecutor = InventoryActionExecutor()
+        container.repository
+    private val updateChecker: AppUpdateChecker =
+        container.updateChecker
+    private val inventoryAgent: InventoryAgent =
+        container.inventoryAgent
+    private val actionExecutor: InventoryActionExecutor =
+        container.actionExecutor
     private val actionStore = object : InventoryActionStore {
         override suspend fun insert(item: Item): Long = repository.insert(item)
         override suspend fun applyInventoryChange(
@@ -65,6 +72,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _operationError = MutableStateFlow<String?>(null)
     val operationError: StateFlow<String?> = _operationError.asStateFlow()
+
+    private val _today = MutableStateFlow(repository.today())
 
     // ======================== 数据流 ========================
 
@@ -103,9 +112,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     /** 已过期物品数 */
-    val expiredCount: StateFlow<Int> = repository.getExpiredCount()
+    val expiredCount: StateFlow<Int> = combine(allActiveItems, _today) { items, today ->
+        items.count { item -> item.expirationDate < today }
+    }
         .catch { emit(0) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    init {
+        refreshTodayAtMidnight()
+    }
 
     // ======================== 操作 ========================
 
@@ -328,5 +343,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _operationError.value = errorMessage
             }
         }
+    }
+
+    private fun refreshTodayAtMidnight() {
+        viewModelScope.launch {
+            while (isActive) {
+                _today.value = repository.today()
+                delay(millisUntilNextDay())
+            }
+        }
+    }
+
+    private fun millisUntilNextDay(): Long {
+        val now = ZonedDateTime.now()
+        val nextDay = now.toLocalDate().plusDays(1).atStartOfDay(now.zone)
+        return (Duration.between(now, nextDay).toMillis() + DATE_REFRESH_GRACE_MILLIS)
+            .coerceAtLeast(MIN_DATE_REFRESH_DELAY_MILLIS)
+    }
+
+    private companion object {
+        private const val DATE_REFRESH_GRACE_MILLIS = 1_000L
+        private const val MIN_DATE_REFRESH_DELAY_MILLIS = 60_000L
     }
 }

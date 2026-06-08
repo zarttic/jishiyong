@@ -72,7 +72,7 @@ MVP 只支持库存操作，不做通用聊天。
 agent/InventoryAction.kt
 agent/InventoryAgent.kt
 agent/InventoryActionPlanner.kt
-agent/InventoryAgentFactory.kt
+AppContainer.kt
 agent/InventoryAgentRequest.kt
 agent/InventoryAgentMode.kt
 agent/AgentMemory.kt

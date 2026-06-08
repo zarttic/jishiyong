@@ -3,7 +3,7 @@ package com.jishiyong.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.jishiyong.JiShiYongApp
+import com.jishiyong.AppContainerProvider
 import com.jishiyong.data.db.dao.CategoryStat
 import com.jishiyong.data.db.dao.ConsumeStat
 import com.jishiyong.data.db.entity.ConsumeType
@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 
@@ -31,10 +30,13 @@ data class StatisticsUiState(
 
 class StatisticsViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val container = (application as AppContainerProvider).container
     private val repository: ItemRepository =
-        (application as JiShiYongApp).repository
+        container.repository
 
-    private val _uiState = MutableStateFlow(StatisticsUiState())
+    private val _uiState = MutableStateFlow(
+        StatisticsUiState(selectedMonth = YearMonth.from(repository.today()))
+    )
     val uiState: StateFlow<StatisticsUiState> = _uiState.asStateFlow()
     private var loadJob: Job? = null
 
@@ -75,7 +77,7 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                     monthlyConsumeStats = monthlyStats,
                     totalItems = createdThisMonth,
                     activeItems = repository.getActiveCountSnapshot(),
-                    expiredItems = repository.getExpiredCountSnapshot(LocalDate.now()),
+                    expiredItems = repository.getExpiredCountSnapshot(),
                     consumedThisMonth = consumedThisMonth,
                     wastedThisMonth = wastedThisMonth,
                     selectedMonth = selectedMonth

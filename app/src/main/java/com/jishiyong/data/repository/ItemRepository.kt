@@ -14,7 +14,10 @@ import java.time.temporal.ChronoUnit
 /**
  * 物品数据仓库
  */
-class ItemRepository(private val itemDao: ItemDao) {
+class ItemRepository(
+    private val itemDao: ItemDao,
+    private val todayProvider: TodayProvider = SystemTodayProvider
+) {
 
     // ======================== 查询 ========================
 
@@ -36,7 +39,7 @@ class ItemRepository(private val itemDao: ItemDao) {
     }
 
     suspend fun getExpiredItems(): List<Item> =
-        itemDao.getExpiredItems(LocalDate.now())
+        itemDao.getExpiredItems(todayProvider.today())
 
     suspend fun getItemById(id: Long): Item? = itemDao.getItemById(id)
 
@@ -50,7 +53,8 @@ class ItemRepository(private val itemDao: ItemDao) {
 
     fun getActiveCount(): Flow<Int> = itemDao.getActiveCount()
 
-    fun getExpiredCount(): Flow<Int> = itemDao.getExpiredCount(LocalDate.now())
+    fun getExpiredCount(today: LocalDate = todayProvider.today()): Flow<Int> =
+        itemDao.getExpiredCount(today)
 
     suspend fun getCategoryStats(): List<CategoryStat> = itemDao.getCategoryStats()
 
@@ -65,7 +69,7 @@ class ItemRepository(private val itemDao: ItemDao) {
 
     suspend fun getActiveCountSnapshot(): Int = itemDao.getActiveCountSnapshot()
 
-    suspend fun getExpiredCountSnapshot(today: LocalDate = LocalDate.now()): Int =
+    suspend fun getExpiredCountSnapshot(today: LocalDate = todayProvider.today()): Int =
         itemDao.getExpiredCountSnapshot(today)
 
     suspend fun getMonthlyConsumeStats(
@@ -99,13 +103,15 @@ class ItemRepository(private val itemDao: ItemDao) {
 
     suspend fun deleteAllConsumed() = itemDao.deleteAllConsumed()
 
+    fun today(): LocalDate = todayProvider.today()
+
     // ======================== 业务逻辑 ========================
 
     /**
      * 获取需要提醒的物品及对应提醒级别
      */
     suspend fun getItemsNeedingReminders(): Map<Item, List<Int>> {
-        val today = LocalDate.now()
+        val today = todayProvider.today()
         val items = itemDao.getActiveItemsSnapshot()
         val result = mutableMapOf<Item, List<Int>>()
 
@@ -122,7 +128,7 @@ class ItemRepository(private val itemDao: ItemDao) {
      * 获取物品剩余天数
      */
     fun getDaysUntilExpiry(item: Item): Int {
-        val today = LocalDate.now()
+        val today = todayProvider.today()
         return ChronoUnit.DAYS.between(today, item.expirationDate).toInt()
     }
 

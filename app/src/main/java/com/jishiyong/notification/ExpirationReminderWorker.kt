@@ -11,7 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.jishiyong.JiShiYongApp
+import com.jishiyong.AppContainerProvider
 import com.jishiyong.MainActivity
 import com.jishiyong.R
 import com.jishiyong.data.db.entity.Item
@@ -24,8 +24,8 @@ class ExpirationReminderWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val app = applicationContext as? JiShiYongApp ?: return Result.failure()
-        val repository = app.repository
+        val provider = applicationContext as? AppContainerProvider ?: return Result.failure()
+        val repository = provider.container.repository
 
         // 检查通知权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

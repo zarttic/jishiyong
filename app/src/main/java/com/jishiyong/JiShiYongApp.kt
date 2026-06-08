@@ -7,26 +7,20 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.work.*
-import com.jishiyong.data.db.AppDatabase
-import com.jishiyong.data.repository.ItemRepository
 import com.jishiyong.notification.ExpirationReminderWorker
 import com.jishiyong.util.Constants
 import java.util.concurrent.TimeUnit
 
-class JiShiYongApp : Application() {
+class JiShiYongApp : Application(), AppContainerProvider {
 
-    lateinit var database: AppDatabase
-        private set
-    lateinit var repository: ItemRepository
+    override lateinit var container: AppContainer
         private set
 
     override fun onCreate() {
         super.onCreate()
         instance = this
 
-        // 初始化数据库和仓库
-        database = AppDatabase.getDatabase(this)
-        repository = ItemRepository(database.itemDao())
+        container = AppContainer(this)
 
         // 创建通知渠道
         createNotificationChannel()
