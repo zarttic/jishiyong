@@ -19,7 +19,7 @@
 - `app/src/test/java/com/jishiyong/agent/RoomAgentMemoryStoreTest.kt`
 - `app/src/test/java/com/jishiyong/agent/InventoryActionExecutorTest.kt`
 
-本章讲三件容易被混在一起的事：记忆、确认、执行。这个教学项目把它们拆开，是为了保证 agent 可以学习用户习惯，但不能因为学到了某个习惯就直接修改库存。
+本章讲三件容易被混在一起的事：记忆、确认、执行。这套文档把它们拆开，是为了保证 agent 可以学习用户习惯，但不能因为学到了某个习惯就直接修改库存。
 
 ```mermaid
 flowchart TD
