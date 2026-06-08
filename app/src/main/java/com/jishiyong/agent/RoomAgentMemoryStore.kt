@@ -34,18 +34,12 @@ class RoomAgentMemoryStore(
         action: InventoryAction,
         matchedItem: Item?
     ) {
-        val records = try {
-            dao.getAllMemories().mapNotNull { it.toAliasMemoryOrNull() }
-        } catch (exception: CancellationException) {
-            throw exception
-        } catch (exception: Exception) {
-            logger.warn("Failed to load Room agent memories for update", exception)
-            emptyList()
-        }
-
-        val updated = engine.learnFromAction(records, recognizedText, action, matchedItem)
         try {
-            dao.replaceAllMemories(updated.map { it.toEntity() })
+            dao.rewriteAllMemories { entities ->
+                val records = entities.mapNotNull { it.toAliasMemoryOrNull() }
+                engine.learnFromAction(records, recognizedText, action, matchedItem)
+                    .map { it.toEntity() }
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {

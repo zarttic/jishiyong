@@ -1,5 +1,6 @@
 package com.jishiyong.agent
 
+import com.jishiyong.data.db.InventoryChangeResult
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
@@ -123,6 +124,25 @@ class InventoryActionExecutorTest {
         assertTrue(store.updatedUsedQuantity.isEmpty())
     }
 
+    @Test
+    fun executeConsumeReportsConcurrentConflict() = runTest {
+        val milk = item(id = 1, name = "蒙牛牛奶", quantity = 3, usedQuantity = 1)
+        val store = FakeActionStore(
+            items = mutableMapOf(milk.id to milk),
+            forcedChangeResult = InventoryChangeResult.Conflict
+        )
+        val pending = VoiceInputState.PendingConfirmation(
+            recognizedText = "喝了一瓶蒙牛牛奶",
+            action = InventoryAction.ConsumeItem(itemName = "蒙牛牛奶", quantity = 1),
+            matchedItem = milk
+        )
+
+        val state = executor.execute(pending, store)
+
+        assertTrue(state is VoiceInputState.Error)
+        assertTrue((state as VoiceInputState.Error).message.contains("重新确认"))
+    }
+
     private fun item(
         id: Long,
         name: String,
@@ -143,7 +163,8 @@ class InventoryActionExecutorTest {
     }
 
     private class FakeActionStore(
-        private val items: MutableMap<Long, Item> = mutableMapOf()
+        private val items: MutableMap<Long, Item> = mutableMapOf(),
+        private val forcedChangeResult: InventoryChangeResult? = null
     ) : InventoryActionStore {
         val inserted = mutableListOf<Item>()
         val consumed = mutableMapOf<Long, ConsumeType>()
@@ -156,14 +177,47 @@ class InventoryActionExecutorTest {
             return id
         }
 
-        override suspend fun getItemById(id: Long): Item? = items[id]
+        override suspend fun applyInventoryChange(
+            id: Long,
+            quantity: Int,
+            consumeType: ConsumeType
+        ): InventoryChangeResult {
+            forcedChangeResult?.let { return it }
+            if (quantity <= 0) return InventoryChangeResult.InvalidQuantity
+            val item = items[id] ?: return InventoryChangeResult.Missing
+            if (item.isConsumed) return InventoryChangeResult.AlreadyConsumed
 
-        override suspend fun markAsConsumed(id: Long, type: ConsumeType) {
-            consumed[id] = type
-        }
+            val remainingQuantity = item.remainingQuantity()
+            if (remainingQuantity <= 0) {
+                val updated = item.copy(
+                    usedQuantity = item.quantity,
+                    isConsumed = true,
+                    consumeType = consumeType
+                )
+                items[id] = updated
+                updatedUsedQuantity[id] = updated.usedQuantity
+                consumed[id] = consumeType
+                return InventoryChangeResult.Applied(updated)
+            }
+            if (quantity > remainingQuantity) {
+                return InventoryChangeResult.InsufficientQuantity(item, remainingQuantity)
+            }
 
-        override suspend fun updateUsedQuantity(id: Long, quantity: Int) {
-            updatedUsedQuantity[id] = quantity
+            val updated = if (quantity >= remainingQuantity) {
+                item.copy(
+                    usedQuantity = item.quantity,
+                    isConsumed = true,
+                    consumeType = consumeType
+                )
+            } else {
+                item.copy(usedQuantity = item.usedQuantity + quantity)
+            }
+            items[id] = updated
+            updatedUsedQuantity[id] = updated.usedQuantity
+            if (updated.isConsumed) {
+                consumed[id] = consumeType
+            }
+            return InventoryChangeResult.Applied(updated)
         }
     }
 }

@@ -80,7 +80,7 @@ class OpenAiCompatibleLlmClient(
                     return response.body
                 }
 
-                val exception = LlmHttpException(response.statusCode, response.body)
+                val exception = LlmHttpException(response.statusCode)
                 if (!exception.isRetryable || attempt == MAX_ATTEMPTS - 1) {
                     throw exception
                 }
@@ -142,9 +142,8 @@ class OpenAiCompatibleLlmClient(
     )
 
     private class LlmHttpException(
-        private val statusCode: Int,
-        private val responseText: String
-    ) : IOException("AI request failed: HTTP $statusCode $responseText") {
+        private val statusCode: Int
+    ) : IOException("AI request failed: HTTP $statusCode (${safeHttpStatusCategory(statusCode)})") {
         val isRetryable: Boolean = statusCode == 408 || statusCode == 429 || statusCode in 500..599
     }
 
@@ -158,5 +157,17 @@ class OpenAiCompatibleLlmClient(
             .readTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .build()
+    }
+}
+
+private fun safeHttpStatusCategory(statusCode: Int): String {
+    return when (statusCode) {
+        400 -> "bad_request"
+        401, 403 -> "authentication"
+        404 -> "not_found"
+        408 -> "timeout"
+        429 -> "rate_limited"
+        in 500..599 -> "server_error"
+        else -> "http_error"
     }
 }

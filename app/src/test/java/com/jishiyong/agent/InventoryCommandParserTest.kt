@@ -105,4 +105,25 @@ class InventoryCommandParserTest {
 
         assertTrue(action is InventoryAction.AskClarification)
     }
+
+    @Test
+    fun parseNegatedConsumeAsksClarification() {
+        val action = parser.parse("不要喝牛奶", today)
+
+        assertTrue(action is InventoryAction.AskClarification)
+    }
+
+    @Test
+    fun parseNegatedDiscardAsksClarification() {
+        val action = parser.parse("别把牛奶扔了", today)
+
+        assertTrue(action is InventoryAction.AskClarification)
+    }
+
+    @Test
+    fun parseQuestionAsksClarificationInsteadOfAction() {
+        val action = parser.parse("要不要把牛奶丢掉", today)
+
+        assertTrue(action is InventoryAction.AskClarification)
+    }
 }

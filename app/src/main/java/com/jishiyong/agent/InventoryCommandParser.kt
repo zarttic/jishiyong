@@ -12,6 +12,12 @@ class InventoryCommandParser(
         if (normalized.isBlank()) {
             return InventoryAction.AskClarification("没有识别到语音内容，请重试")
         }
+        if (normalized.hasCancellationIntent()) {
+            return InventoryAction.AskClarification("已识别为取消或否定表达，请重新说明要执行的库存操作")
+        }
+        if (normalized.hasQuestionIntent()) {
+            return InventoryAction.AskClarification("请确认是否要执行库存新增、消耗或丢弃操作")
+        }
 
         return when {
             normalized.containsAny(addKeywords) -> parseAdd(normalized, today)
@@ -340,6 +346,21 @@ class InventoryCommandParser(
         return keywords.any { contains(it) }
     }
 
+    private fun String.hasCancellationIntent(): Boolean {
+        return cancellationKeywords.any { contains(it) } ||
+            negationKeywords.any { negation ->
+                inventoryChangeKeywords.any { keyword ->
+                    val index = indexOf(keyword)
+                    index >= 0 && lastIndexOf(negation, startIndex = index) >= 0
+                }
+            }
+    }
+
+    private fun String.hasQuestionIntent(): Boolean {
+        if (!containsAny(questionKeywords)) return false
+        return containsAny(inventoryChangeKeywords)
+    }
+
     private fun String.removeExpirationDateText(): String {
         return replace(yearMonthDayRegex, "")
             .replace(monthDayRegex, "")
@@ -407,6 +428,10 @@ class InventoryCommandParser(
         private val addKeywords = listOf("买了", "购买了", "采购了", "新增了", "添加了", "入手了", "囤了", "买", "购买", "采购", "新增", "添加", "入手", "囤")
         private val consumeKeywords = listOf("喝了", "吃了", "用了", "用掉了", "消耗了", "喝", "吃", "用掉", "使用了", "使用", "消耗")
         private val discardKeywords = listOf("扔掉了", "丢掉了", "扔了", "丢了", "倒掉了", "处理掉了", "扔掉", "丢掉", "丢弃", "废弃", "扔", "丢", "倒掉", "处理掉")
+        private val inventoryChangeKeywords = addKeywords + consumeKeywords + discardKeywords
+        private val cancellationKeywords = listOf("取消", "不用了", "算了", "撤销", "不执行")
+        private val negationKeywords = listOf("不", "没", "未", "别", "不要", "先别")
+        private val questionKeywords = listOf("吗", "么", "是不是", "要不要", "可不可以", "能不能", "是否")
         private val expirationKeywords = listOf("过期", "到期", "保质期")
         private val clauseSeparators = listOf(',', '.', ';', ':', '!', '?')
 

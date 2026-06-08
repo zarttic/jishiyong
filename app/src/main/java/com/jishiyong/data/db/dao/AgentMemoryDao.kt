@@ -53,4 +53,11 @@ interface AgentMemoryDao {
             }
         )
     }
+
+    @Transaction
+    suspend fun rewriteAllMemories(
+        transform: (List<AgentMemoryEntity>) -> List<AgentMemoryEntity>
+    ) {
+        replaceAllMemories(transform(getAllMemories()))
+    }
 }
