@@ -1,6 +1,7 @@
 package com.jishiyong
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,10 +15,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +34,7 @@ import com.jishiyong.ui.screens.AddItemScreen
 import com.jishiyong.ui.screens.HomeScreen
 import com.jishiyong.ui.screens.InspectionScreen
 import com.jishiyong.ui.screens.ItemDetailScreen
+import com.jishiyong.ui.screens.SettingsScreen
 import com.jishiyong.ui.screens.StatisticsScreen
 import com.jishiyong.ui.components.FreshBackdropStyle
 import com.jishiyong.ui.theme.JiShiYongTheme
@@ -71,14 +75,30 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private const val UI_PREFS_NAME = "jishiyong_ui_settings"
+private const val KEY_BACKDROP_STYLE = "backdrop_style"
+
 @Composable
 fun JiShiYongNavigation() {
     val navController = rememberNavController()
     val mainViewModel: MainViewModel = viewModel()
     val operationError by mainViewModel.operationError.collectAsStateWithLifecycle()
-    var backdropStyleName by rememberSaveable { mutableStateOf(FreshBackdropStyle.ColdMist.name) }
+    val context = LocalContext.current
+    val uiPreferences = remember(context) {
+        context.applicationContext.getSharedPreferences(UI_PREFS_NAME, Context.MODE_PRIVATE)
+    }
+    var backdropStyleName by rememberSaveable {
+        mutableStateOf(
+            uiPreferences.getString(KEY_BACKDROP_STYLE, FreshBackdropStyle.ColdMist.name)
+                ?: FreshBackdropStyle.ColdMist.name
+        )
+    }
     val backdropStyle = FreshBackdropStyle.entries.find { it.name == backdropStyleName }
         ?: FreshBackdropStyle.ColdMist
+    val updateBackdropStyle: (FreshBackdropStyle) -> Unit = { style ->
+        backdropStyleName = style.name
+        uiPreferences.edit().putString(KEY_BACKDROP_STYLE, style.name).apply()
+    }
 
     NavHost(
         navController = navController,
@@ -100,8 +120,10 @@ fun JiShiYongNavigation() {
                 onInspectClick = {
                     navController.navigate("inspection")
                 },
-                backdropStyle = backdropStyle,
-                onBackdropStyleSelected = { backdropStyleName = it.name }
+                onSettingsClick = {
+                    navController.navigate("settings")
+                },
+                backdropStyle = backdropStyle
             )
         }
 
@@ -152,6 +174,14 @@ fun JiShiYongNavigation() {
                 viewModel = mainViewModel,
                 onBack = { navController.popBackStack() },
                 backdropStyle = backdropStyle
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                selectedBackdropStyle = backdropStyle,
+                onBackdropStyleSelected = updateBackdropStyle,
+                onBack = { navController.popBackStack() }
             )
         }
     }

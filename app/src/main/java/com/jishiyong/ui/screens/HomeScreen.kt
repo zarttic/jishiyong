@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
@@ -80,7 +81,6 @@ import com.jishiyong.data.repository.ExpiryStatus
 import com.jishiyong.speech.BaiduCloudSpeechRecognizer
 import com.jishiyong.ui.components.AssistantFace
 import com.jishiyong.ui.components.AssistantNote
-import com.jishiyong.ui.components.BackdropStyleSelector
 import com.jishiyong.ui.components.CategoryFilterChips
 import com.jishiyong.ui.components.FoldedPaperSurface
 import com.jishiyong.ui.components.FreshBackdropStyle
@@ -120,8 +120,8 @@ fun HomeScreen(
     onAddClick: () -> Unit,
     onStatsClick: () -> Unit,
     onInspectClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     backdropStyle: FreshBackdropStyle = FreshBackdropStyle.ColdMist,
-    onBackdropStyleSelected: (FreshBackdropStyle) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val activeItems by viewModel.activeItems.collectAsStateWithLifecycle()
@@ -341,7 +341,8 @@ fun HomeScreen(
                         updateCheckState = updateCheckState,
                         onCheckUpdates = { viewModel.checkForUpdates(manual = true) },
                         onStatsClick = onStatsClick,
-                        onInspectClick = onInspectClick
+                        onInspectClick = onInspectClick,
+                        onSettingsClick = onSettingsClick
                     )
                 }
 
@@ -354,13 +355,6 @@ fun HomeScreen(
                         topItems = prioritizedItems.take(3),
                         itemDays = itemDays,
                         totalCount = totalCount
-                    )
-                }
-
-                item {
-                    BackgroundDirectionPanel(
-                        selectedStyle = backdropStyle,
-                        onStyleSelected = onBackdropStyleSelected
                     )
                 }
 
@@ -578,59 +572,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun BackgroundDirectionPanel(
-    selectedStyle: FreshBackdropStyle,
-    onStyleSelected: (FreshBackdropStyle) -> Unit
-) {
-    FoldedPaperSurface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = SurfaceClean.copy(alpha = 0.68f),
-        borderColor = OutlineSoft.copy(alpha = 0.72f),
-        foldColor = BrandSoft
-    ) {
-        Column(
-            modifier = Modifier.padding(13.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "背景方向",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = BrandPrimaryDark
-                    )
-                    Text(
-                        text = "点选后整面保鲜墙会一起更新",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                StatusPill(
-                    text = selectedStyle.displayName,
-                    color = BrandPrimary
-                )
-            }
-            BackdropStyleSelector(
-                selectedStyle = selectedStyle,
-                onStyleSelected = onStyleSelected
-            )
-        }
-    }
-}
-
-@Composable
 private fun HomeTopBar(
     activeCount: Int,
     updateCheckState: UpdateCheckState,
     onCheckUpdates: () -> Unit,
     onStatsClick: () -> Unit,
-    onInspectClick: () -> Unit
+    onInspectClick: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -687,6 +635,13 @@ private fun HomeTopBar(
                     tint = BrandPrimary
                 )
             }
+            PaperIconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "设置",
+                    tint = BrandPrimary
+                )
+            }
         }
     }
 }
@@ -698,7 +653,7 @@ private fun PaperIconButton(
     content: @Composable () -> Unit
 ) {
     Surface(
-        modifier = Modifier.size(42.dp),
+        modifier = Modifier.size(38.dp),
         shape = RoundedCornerShape(14.dp),
         color = SurfaceClean.copy(alpha = 0.74f),
         border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.16f))

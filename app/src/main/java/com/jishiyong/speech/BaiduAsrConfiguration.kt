@@ -8,5 +8,5 @@ data class BaiduAsrConfiguration(
     val devPid: Int
 ) {
     val isComplete: Boolean
-        get() = apiKey.isNotBlank() && secretKey.isNotBlank() && cuid.isNotBlank()
+        get() = appId.isNotBlank() && apiKey.isNotBlank() && secretKey.isNotBlank() && cuid.isNotBlank()
 }

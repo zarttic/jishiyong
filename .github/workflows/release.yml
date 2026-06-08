@@ -75,6 +75,18 @@ jobs:
             echo "Missing secret ANDROID_KEY_PASSWORD"
             exit 1
           }
+          test -n "$BAIDU_ASR_APP_ID" || {
+            echo "Missing secret BAIDU_ASR_APP_ID"
+            exit 1
+          }
+          test -n "$BAIDU_ASR_API_KEY" || {
+            echo "Missing secret BAIDU_ASR_API_KEY"
+            exit 1
+          }
+          test -n "$BAIDU_ASR_SECRET_KEY" || {
+            echo "Missing secret BAIDU_ASR_SECRET_KEY"
+            exit 1
+          }
 
       - name: Decode signing keystore
         run: |

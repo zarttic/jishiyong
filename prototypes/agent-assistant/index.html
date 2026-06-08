@@ -1458,6 +1458,108 @@
       transition: width 520ms var(--ease);
     }
 
+    .settings-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .settings-card {
+      padding: 14px;
+      border: 1px solid rgba(110, 91, 54, 0.14);
+      border-radius: 24px 24px 24px 9px;
+      background: rgba(255, 253, 247, 0.9);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .settings-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .setting-row {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 52px;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border: 1px solid rgba(110, 91, 54, 0.13);
+      border-radius: 17px;
+      background: rgba(251, 246, 234, 0.72);
+      cursor: pointer;
+      transition:
+        transform 220ms var(--ease),
+        border-color 220ms var(--ease),
+        background 220ms var(--ease);
+    }
+
+    .setting-row:hover {
+      transform: translateY(-1px);
+      border-color: rgba(23, 107, 92, 0.28);
+      background: rgba(255, 253, 247, 0.88);
+    }
+
+    .setting-row.active {
+      border-color: rgba(23, 107, 92, 0.42);
+      background: rgba(23, 107, 92, 0.1);
+    }
+
+    .setting-swatch {
+      width: 46px;
+      height: 34px;
+      border: 1px solid rgba(24, 35, 31, 0.08);
+      border-radius: 10px;
+      background: var(--swatch);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+    }
+
+    .setting-title {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .setting-copy {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .setting-check {
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .voice-status {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(31, 143, 100, 0.18);
+      border-radius: 17px;
+      background: rgba(31, 143, 100, 0.09);
+    }
+
+    .voice-glyph {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 13px;
+      color: var(--fresh);
+      background: rgba(31, 143, 100, 0.13);
+    }
+
     .bottom-sheet {
       position: absolute;
       left: 10px;
@@ -1818,6 +1920,9 @@
     <symbol id="i-filter" viewBox="0 0 24 24">
       <path d="M5 7h14M8 12h8M10 17h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
     </symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24">
+      <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6ZM19.2 13.1c.1-.4.1-.7.1-1.1s0-.7-.1-1.1l1.6-1.2-1.7-3-1.9.8c-.6-.5-1.2-.8-1.9-1.1L15 4.4H9l-.3 2c-.7.3-1.4.6-1.9 1.1l-1.9-.8-1.7 3 1.6 1.2c-.1.4-.1.7-.1 1.1s0 .7.1 1.1l-1.6 1.2 1.7 3 1.9-.8c.6.5 1.2.8 1.9 1.1l.3 2h6l.3-2c.7-.3 1.4-.6 1.9-1.1l1.9.8 1.7-3-1.6-1.2Z" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
     <symbol id="i-mic" viewBox="0 0 24 24">
       <path d="M12 4a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3ZM5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
     </symbol>
@@ -1837,39 +1942,8 @@
         <button class="tab" type="button" data-page="detail"><strong>物品档案袋</strong><span>大标签、日期线、数量刻度</span></button>
         <button class="tab" type="button" data-page="report"><strong>少浪费报告</strong><span>月度收据式数据</span></button>
         <button class="tab" type="button" data-page="scan"><strong>小用巡视</strong><span>逐项盘点，不做聊天页</span></button>
+        <button class="tab" type="button" data-page="settings"><strong>设置</strong><span>背景方向、语音配置状态</span></button>
         <button class="tab" type="button" data-page="empty"><strong>空状态</strong><span>第一张半透明标签</span></button>
-      </div>
-
-      <div class="background-lab" aria-label="背景方向切换">
-        <div class="background-lab-head">
-          <div>
-            <p class="background-lab-title">背景方向</p>
-            <p class="background-lab-copy">点选后看右侧手机预览</p>
-          </div>
-        </div>
-        <div class="background-options">
-          <button class="bg-option active" type="button" data-bg="mist" data-caption="冷雾面板：更轻、更干净，适合让标签和今日看板成为绝对主角。" style="--swatch: linear-gradient(135deg, #eff6f2, #ffffff 44%, #efe6d4)">
-            <i class="bg-swatch"></i>
-            <span>冷雾面</span>
-          </button>
-          <button class="bg-option" type="button" data-bg="magnet" data-caption="磁吸保鲜墙：保留冰箱门的生活感，但取消中缝，用侧边光和低对比横线做空间暗示。" style="--swatch: linear-gradient(135deg, #f3eee2, #edf4ef 58%, #fffdf7)">
-            <i class="bg-swatch"></i>
-            <span>磁吸墙</span>
-          </button>
-          <button class="bg-option" type="button" data-bg="paper" data-caption="纸面贴板：偏手账和便签系统，亲和力强，但冰箱感会弱一些。" style="--swatch: linear-gradient(135deg, #f8f1df 0 22%, #fff8e8 22% 36%, #f8f1df 36% 100%)">
-            <i class="bg-swatch"></i>
-            <span>纸贴板</span>
-          </button>
-          <button class="bg-option" type="button" data-bg="tile" data-caption="厨房浅砖：空间感最明确，生活场景强；需要注意别让网格显得太硬。" style="--swatch: linear-gradient(135deg, #f7f5ed, #edf4ef)">
-            <i class="bg-swatch"></i>
-            <span>厨房砖</span>
-          </button>
-          <button class="bg-option" type="button" data-bg="shelf" data-caption="收纳层板：把物品分层放置的概念讲得最直接，适合强调时间货架。" style="--swatch: linear-gradient(180deg, #f4eee0 0 34%, #d8c8a8 35%, #f8f3e7 36% 67%, #d8c8a8 68%, #ebe1cd 69%)">
-            <i class="bg-swatch"></i>
-            <span>层板</span>
-          </button>
-        </div>
-        <p id="backgroundCaption" class="background-caption">冷雾面板：更轻、更干净，适合让标签和今日看板成为绝对主角。</p>
       </div>
 
       <div class="icon-lab" aria-label="应用图标预览">
@@ -1917,6 +1991,7 @@
               <div class="icon-actions">
                 <span class="icon-btn"><svg width="19" height="19"><use href="#i-chart"></use></svg></span>
                 <span class="icon-btn"><svg width="19" height="19"><use href="#i-filter"></use></svg></span>
+                <span class="icon-btn" onclick="setPage('settings')"><svg width="19" height="19"><use href="#i-settings"></use></svg></span>
               </div>
             </header>
 
@@ -2152,6 +2227,61 @@
             </section>
           </section>
 
+          <section class="screen-page" data-screen="settings">
+            <header class="topbar">
+              <div>
+                <h2 class="app-title">设置</h2>
+                <p class="app-sub">界面和语音配置</p>
+              </div>
+            </header>
+
+            <div class="settings-stack">
+              <section class="settings-card">
+                <div class="settings-head">
+                  <div>
+                    <div class="section-kicker">保鲜墙背景</div>
+                    <p class="assistant-copy" style="margin:5px 0 0">首页保持清爽，背景方向放在这里调。</p>
+                  </div>
+                  <span class="tiny-pill" id="selectedBgPill">冷雾面</span>
+                </div>
+                <button class="setting-row bg-option active" type="button" data-bg="mist" data-label="冷雾面" data-caption="冷雾面板：更轻、更干净，适合让标签和今日看板成为绝对主角。" style="--swatch: linear-gradient(135deg, #eff6f2, #ffffff 44%, #efe6d4)">
+                  <i class="setting-swatch"></i>
+                  <span><span class="setting-title">冷雾面</span><span class="setting-copy">更轻、更干净</span></span>
+                  <span class="setting-check">当前</span>
+                </button>
+                <button class="setting-row bg-option" type="button" data-bg="magnet" data-label="磁吸墙" data-caption="磁吸保鲜墙：保留冰箱门的生活感，但取消中缝，用侧边光和低对比横线做空间暗示。" style="--swatch: linear-gradient(135deg, #f3eee2, #edf4ef 58%, #fffdf7)">
+                  <i class="setting-swatch"></i>
+                  <span><span class="setting-title">磁吸墙</span><span class="setting-copy">保留生活感</span></span>
+                  <span class="setting-check"></span>
+                </button>
+                <button class="setting-row bg-option" type="button" data-bg="paper" data-label="纸贴板" data-caption="纸面贴板：偏手账和便签系统，亲和力强，但冰箱感会弱一些。" style="--swatch: linear-gradient(135deg, #f8f1df 0 22%, #fff8e8 22% 36%, #f8f1df 36% 100%)">
+                  <i class="setting-swatch"></i>
+                  <span><span class="setting-title">纸贴板</span><span class="setting-copy">手账便签感</span></span>
+                  <span class="setting-check"></span>
+                </button>
+                <button class="setting-row bg-option" type="button" data-bg="tile" data-label="厨房砖" data-caption="厨房浅砖：空间感最明确，生活场景强；需要注意别让网格显得太硬。" style="--swatch: linear-gradient(135deg, #f7f5ed, #edf4ef)">
+                  <i class="setting-swatch"></i>
+                  <span><span class="setting-title">厨房砖</span><span class="setting-copy">生活场景强</span></span>
+                  <span class="setting-check"></span>
+                </button>
+                <button class="setting-row bg-option" type="button" data-bg="shelf" data-label="层板" data-caption="收纳层板：把物品分层放置的概念讲得最直接，适合强调时间货架。" style="--swatch: linear-gradient(180deg, #f4eee0 0 34%, #d8c8a8 35%, #f8f3e7 36% 67%, #d8c8a8 68%, #ebe1cd 69%)">
+                  <i class="setting-swatch"></i>
+                  <span><span class="setting-title">层板</span><span class="setting-copy">强调时间货架</span></span>
+                  <span class="setting-check"></span>
+                </button>
+              </section>
+
+              <section class="settings-card">
+                <div class="section-kicker">语音</div>
+                <div class="voice-status" style="margin-top:12px">
+                  <span class="voice-glyph"><svg width="19" height="19"><use href="#i-mic"></use></svg></span>
+                  <span><span class="setting-title">百度云语音</span><span class="setting-copy">已随安装包配置，系统语音不可用时兜底。</span></span>
+                  <span class="setting-check">已配置</span>
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section class="screen-page" data-screen="empty">
             <header class="topbar">
               <div>
@@ -2217,6 +2347,7 @@
     const screen = document.querySelector(".screen");
     const backgroundOptions = document.querySelectorAll(".bg-option");
     const backgroundCaption = document.querySelector("#backgroundCaption");
+    const selectedBgPill = document.querySelector("#selectedBgPill");
     let scanTimer;
 
     function setPage(name) {
@@ -2261,7 +2392,12 @@
       option.addEventListener("click", () => {
         screen.dataset.bg = option.dataset.bg;
         backgroundOptions.forEach((item) => item.classList.toggle("active", item === option));
-        backgroundCaption.textContent = option.dataset.caption;
+        backgroundOptions.forEach((item) => {
+          const check = item.querySelector(".setting-check");
+          if (check) check.textContent = item === option ? "当前" : "";
+        });
+        if (backgroundCaption) backgroundCaption.textContent = option.dataset.caption;
+        if (selectedBgPill) selectedBgPill.textContent = option.dataset.label || option.textContent.trim();
       });
     });
 

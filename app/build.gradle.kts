@@ -178,6 +178,29 @@ dependencies {
     testImplementation(libs.org.json)
 }
 
+tasks.register("verifyBaiduAsrReleaseConfig") {
+    group = "verification"
+    description = "Fails release builds when Baidu cloud speech credentials are missing."
+    doLast {
+        val missing = listOf(
+            "BAIDU_ASR_APP_ID" to baiduAsrAppId,
+            "BAIDU_ASR_API_KEY" to baiduAsrApiKey,
+            "BAIDU_ASR_SECRET_KEY" to baiduAsrSecretKey
+        ).filter { (_, value) -> value.isBlank() }
+
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Missing Baidu ASR release config: " + missing.joinToString { it.first } +
+                    ". Configure these values in GitHub Secrets, local.properties, environment variables, or Gradle properties before building a release APK."
+            )
+        }
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }.configureEach {
+    dependsOn("verifyBaiduAsrReleaseConfig")
+}
+
 tasks.withType<Test>().configureEach {
     testLogging {
         events("failed", "skipped")

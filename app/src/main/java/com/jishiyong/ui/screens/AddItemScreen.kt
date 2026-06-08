@@ -319,60 +319,79 @@ private fun LabelPrinterPreview(
     expiryStatus: ExpiryStatus,
     daysUntilExpiry: Int
 ) {
-    FoldedPaperSurface(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        color = SurfaceClean.copy(alpha = 0.88f),
-        borderColor = BrandPrimary.copy(alpha = 0.16f),
-        foldColor = BrandSoft
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        PrinterMachineHead()
+        FoldedPaperSurface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            shape = RoundedCornerShape(
+                topStart = 8.dp,
+                topEnd = 8.dp,
+                bottomEnd = 26.dp,
+                bottomStart = 10.dp
+            ),
+            color = SurfaceClean.copy(alpha = 0.9f),
+            borderColor = BrandPrimary.copy(alpha = 0.16f),
+            foldColor = BrandSoft
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "标签预览",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = BrandPrimary
+                    )
+                    StatusPill(
+                        text = "打印预览",
+                        color = BrandPrimary
+                    )
+                }
+                Box(modifier = Modifier.padding(horizontal = 6.dp)) {
+                    FreshnessLabelCard(
+                        item = item,
+                        expiryStatus = expiryStatus,
+                        daysUntilExpiry = daysUntilExpiry,
+                        large = true
+                    )
+                }
                 Text(
-                    text = "标签预览",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = BrandPrimary
-                )
-                StatusPill(
-                    text = "打印预览",
-                    color = BrandPrimary
+                    text = "确认内容后再贴上墙，小用不会直接改库存。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            PrinterSlot()
-            Box(modifier = Modifier.padding(horizontal = 6.dp)) {
-                FreshnessLabelCard(
-                    item = item,
-                    expiryStatus = expiryStatus,
-                    daysUntilExpiry = daysUntilExpiry,
-                    large = true
-                )
-            }
-            Text(
-                text = "确认内容后再贴上墙，小用不会直接改库存。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
 
 @Composable
-private fun PrinterSlot() {
+private fun PrinterMachineHead() {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 6.dp),
+        shape = RoundedCornerShape(
+            topStart = 24.dp,
+            topEnd = 24.dp,
+            bottomEnd = 18.dp,
+            bottomStart = 18.dp
+        ),
         color = BrandPrimaryDark
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
@@ -388,7 +407,7 @@ private fun PrinterSlot() {
                 )
                 Box(
                     modifier = Modifier
-                        .width(42.dp)
+                        .width(46.dp)
                         .height(5.dp)
                         .background(BrandSoft.copy(alpha = 0.62f), RoundedCornerShape(999.dp))
                 )
@@ -396,9 +415,18 @@ private fun PrinterSlot() {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(10.dp)
-                    .background(SurfaceSoft.copy(alpha = 0.22f), RoundedCornerShape(999.dp))
-            )
+                    .height(13.dp)
+                    .background(Color(0xFF0B3C34), RoundedCornerShape(999.dp))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.62f)
+                        .height(13.dp)
+                        .align(Alignment.CenterStart)
+                        .padding(start = 8.dp, top = 4.dp, bottom = 4.dp)
+                        .background(SurfaceSoft.copy(alpha = 0.24f), RoundedCornerShape(999.dp))
+                )
+            }
         }
     }
 }

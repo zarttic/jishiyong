@@ -31,6 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -198,22 +200,24 @@ fun FridgeDoorBackdrop(
                     }
                     FreshBackdropStyle.MagneticWall -> Unit
                 }
-                val lineAlpha = when (style) {
-                    FreshBackdropStyle.ColdMist -> 0.12f
-                    FreshBackdropStyle.MagneticWall -> 0.22f
-                    FreshBackdropStyle.PaperBoard -> 0.18f
-                    FreshBackdropStyle.KitchenTile -> 0.08f
-                    FreshBackdropStyle.ShelfBoard -> 0.28f
-                }
-                val lineColor = OutlineSoft.copy(alpha = lineAlpha)
-                listOf(188.dp.toPx(), size.height - 184.dp.toPx()).forEach { y ->
-                    if (y in 0f..size.height) {
-                        drawLine(
-                            color = lineColor,
-                            start = Offset(22.dp.toPx(), y),
-                            end = Offset(size.width - 22.dp.toPx(), y),
-                            strokeWidth = 1.dp.toPx()
-                        )
+                if (style != FreshBackdropStyle.ColdMist) {
+                    val lineAlpha = when (style) {
+                        FreshBackdropStyle.ColdMist -> 0f
+                        FreshBackdropStyle.MagneticWall -> 0.16f
+                        FreshBackdropStyle.PaperBoard -> 0.14f
+                        FreshBackdropStyle.KitchenTile -> 0.08f
+                        FreshBackdropStyle.ShelfBoard -> 0.26f
+                    }
+                    val lineColor = OutlineSoft.copy(alpha = lineAlpha)
+                    listOf(188.dp.toPx(), size.height - 184.dp.toPx()).forEach { y ->
+                        if (y in 0f..size.height) {
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(22.dp.toPx(), y),
+                                end = Offset(size.width - 22.dp.toPx(), y),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                        }
                     }
                 }
                 drawContent()
@@ -656,9 +660,29 @@ fun FreshnessLabelCard(
     }
     val activeTicks = freshnessTickCount(daysUntilExpiry, expiryStatus)
     val clickableModifier = onClick?.let { modifier.clickable(onClick = it) } ?: modifier
+    val labelShape = RoundedCornerShape(
+        topStart = if (large) 24.dp else 22.dp,
+        topEnd = if (large) 24.dp else 22.dp,
+        bottomEnd = if (large) 24.dp else 22.dp,
+        bottomStart = if (large) 10.dp else 8.dp
+    )
+    val labelRotation = when {
+        large -> -1.1f
+        item.id % 3L == 1L -> -0.8f
+        item.id % 3L == 2L -> 0.7f
+        else -> 0.2f
+    }
 
     FoldedPaperSurface(
-        modifier = clickableModifier,
+        modifier = clickableModifier
+            .rotate(labelRotation)
+            .shadow(
+                elevation = if (large) 10.dp else 6.dp,
+                shape = labelShape,
+                ambientColor = Color(0xFF372A12).copy(alpha = 0.08f),
+                spotColor = Color(0xFF372A12).copy(alpha = 0.12f)
+            ),
+        shape = labelShape,
         color = labelColor,
         borderColor = statusColor.copy(alpha = if (expiryStatus == ExpiryStatus.FRESH) 0.22f else 0.36f)
     ) {
