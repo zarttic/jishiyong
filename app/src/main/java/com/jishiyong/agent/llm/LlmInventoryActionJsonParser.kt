@@ -68,7 +68,7 @@ class LlmInventoryActionJsonParser(
         val item = root.optJSONObject("item")
         val itemId = root.positiveLongField("item_id").valueOrNull()
             ?: root.positiveLongField("id").valueOrNull()
-            ?: item?.positiveLongField("id").valueOrNull()
+            ?: item?.positiveLongField("id")?.valueOrNull()
         val itemName = listOf(
             root.optString("item_name"),
             root.optString("name"),
