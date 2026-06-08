@@ -1,9 +1,13 @@
 package com.jishiyong.speech
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -14,9 +18,18 @@ import kotlin.math.max
 
 class PcmSpeechRecorder {
     suspend fun recordSpeechPcm(
+        context: Context,
         maxDurationMillis: Long = MAX_DURATION_MILLIS
     ): ByteArray {
         return withContext(Dispatchers.IO) {
+            if (ContextCompat.checkSelfPermission(
+                    context.applicationContext,
+                    Manifest.permission.RECORD_AUDIO
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                throw IOException("Microphone permission is not granted")
+            }
+
             val minBufferSize = AudioRecord.getMinBufferSize(
                 SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO,
@@ -27,13 +40,17 @@ class PcmSpeechRecorder {
             }
 
             val bufferSize = max(minBufferSize, MIN_BUFFER_SIZE)
-            val recorder = AudioRecord(
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                bufferSize
-            )
+            val recorder = try {
+                AudioRecord(
+                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                    SAMPLE_RATE,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    bufferSize
+                )
+            } catch (exception: SecurityException) {
+                throw IOException("Microphone permission is not granted", exception)
+            }
             if (recorder.state != AudioRecord.STATE_INITIALIZED) {
                 recorder.release()
                 throw IOException("Microphone recorder failed to initialize")
@@ -46,7 +63,11 @@ class PcmSpeechRecorder {
             val startedAt = SystemClock.elapsedRealtime()
 
             try {
-                recorder.startRecording()
+                try {
+                    recorder.startRecording()
+                } catch (exception: SecurityException) {
+                    throw IOException("Microphone permission is not granted", exception)
+                }
                 while (isActive && SystemClock.elapsedRealtime() - startedAt < maxDurationMillis) {
                     val read = recorder.read(buffer, 0, buffer.size)
                     if (read <= 0) continue
