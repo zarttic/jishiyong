@@ -28,19 +28,13 @@ class HybridInventoryActionPlanner(
             val primaryPlan = primary.planWithDiagnostics(request)
             when (val action = primaryPlan.action) {
                 is InventoryAction.AskClarification -> {
-                    val fallbackPlan = fallback.planWithDiagnostics(request)
-                    if (fallbackPlan.action is InventoryAction.AskClarification) {
-                        primaryPlan
-                    } else {
-                        logger.warn("LLM inventory planner requested clarification; using rule fallback")
-                        fallbackPlan.withDiagnostic(
-                            InventoryPlanningDiagnostic(
-                                kind = InventoryPlanningDiagnosticKind.LLM_FALLBACK,
-                                message = "AI 解析不确定，已使用本地规则解析",
-                                technicalMessage = action.message
-                            )
+                    primaryPlan.withDiagnostic(
+                        InventoryPlanningDiagnostic(
+                            kind = InventoryPlanningDiagnosticKind.LLM_CLARIFICATION,
+                            message = "AI 解析需要补充信息",
+                            technicalMessage = action.message
                         )
-                    }
+                    )
                 }
                 else -> primaryPlan
             }

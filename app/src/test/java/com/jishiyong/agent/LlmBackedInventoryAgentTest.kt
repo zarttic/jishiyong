@@ -84,6 +84,32 @@ class LlmBackedInventoryAgentTest {
     }
 
     @Test
+    fun hybridPlannerKeepsExplicitLlmClarification() = runTest {
+        val logger = RecordingAgentLogger()
+        val planner = HybridInventoryActionPlanner(
+            primary = LlmInventoryActionPlanner(
+                client = FakeLlmClient("""{"action":"ask_clarification","message":"不要执行"}"""),
+                promptBuilder = LlmInventoryPromptBuilder(),
+                actionParser = LlmInventoryActionJsonParser()
+            ),
+            fallback = RuleBasedInventoryActionPlanner(),
+            logger = logger
+        )
+
+        val plan = planner.planWithDiagnostics(
+            InventoryAgentRequest(
+                recognizedText = "今天喝了一瓶蒙牛牛奶",
+                activeItems = emptyList(),
+                today = LocalDate.of(2026, 6, 5)
+            )
+        )
+
+        assertTrue(plan.action is InventoryAction.AskClarification)
+        assertEquals(InventoryPlanningDiagnosticKind.LLM_CLARIFICATION, plan.diagnostics.single().kind)
+        assertTrue(logger.warnings.isEmpty())
+    }
+
+    @Test
     fun promptIncludesInventoryAndMemoryContext() = runTest {
         val client = FakeLlmClient("""{"action":"consume_item","item_name":"蒙牛纯牛奶","quantity":1}""")
         val planner = LlmInventoryActionPlanner(

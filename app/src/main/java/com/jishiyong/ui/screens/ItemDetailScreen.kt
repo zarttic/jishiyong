@@ -250,10 +250,10 @@ fun ItemDetailScreen(
                     UsageTicksSection(
                         item = item,
                         onAddOne = {
-                            viewModel.updateUsedQuantity(item, item.usedQuantity + 1)
+                            viewModel.adjustUsedQuantity(item, 1)
                         },
                         onUndo = {
-                            viewModel.updateUsedQuantity(item, item.usedQuantity - 1)
+                            viewModel.adjustUsedQuantity(item, -1)
                         }
                     )
                 }

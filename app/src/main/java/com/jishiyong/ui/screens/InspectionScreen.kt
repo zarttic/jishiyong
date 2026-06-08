@@ -161,7 +161,7 @@ fun InspectionScreen(
                         expiryStatus = viewModel.getExpiryStatus(currentItem),
                         daysUntilExpiry = viewModel.getDaysUntilExpiry(currentItem),
                         onUsed = {
-                            viewModel.updateUsedQuantity(currentItem, currentItem.usedQuantity + 1)
+                            viewModel.adjustUsedQuantity(currentItem, 1)
                             inspectedItemIds = inspectedItemIds + currentItem.id
                         },
                         onKept = {

@@ -1,5 +1,6 @@
 package com.jishiyong.agent
 
+import com.jishiyong.data.db.InventoryChangeResult
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 
@@ -71,40 +72,37 @@ class InventoryActionExecutor(
             return VoiceInputState.Error("数量必须大于 0", recognizedText)
         }
 
-        val currentItem = store.getItemById(item.id)
-            ?: return VoiceInputState.Error("库存不存在或已被删除", recognizedText)
-        if (currentItem.isConsumed) {
-            return VoiceInputState.Error("该库存已经处理完成", recognizedText)
-        }
-
-        val remainingQuantity = currentItem.remainingQuantity()
-        if (remainingQuantity <= 0) {
-            store.updateUsedQuantity(currentItem.id, currentItem.quantity)
-            store.markAsConsumed(currentItem.id, consumeType)
-            return VoiceInputState.Success(fullSuccessMessage)
-        }
-
-        if (quantity > remainingQuantity) {
-            return VoiceInputState.Error(
-                "“${currentItem.name}”剩余 $remainingQuantity，不能操作 $quantity",
-                recognizedText
-            )
-        }
-
-        return if (quantity >= remainingQuantity) {
-            store.updateUsedQuantity(currentItem.id, currentItem.quantity)
-            store.markAsConsumed(currentItem.id, consumeType)
-            VoiceInputState.Success(fullSuccessMessage)
-        } else {
-            store.updateUsedQuantity(currentItem.id, currentItem.usedQuantity + quantity)
-            VoiceInputState.Success(partialSuccessMessage)
+        return when (val result = store.applyInventoryChange(item.id, quantity, consumeType)) {
+            is InventoryChangeResult.Applied -> {
+                if (result.item.isConsumed) {
+                    VoiceInputState.Success(fullSuccessMessage)
+                } else {
+                    VoiceInputState.Success(partialSuccessMessage)
+                }
+            }
+            InventoryChangeResult.Missing -> {
+                VoiceInputState.Error("库存不存在或已被删除", recognizedText)
+            }
+            InventoryChangeResult.AlreadyConsumed -> {
+                VoiceInputState.Error("该库存已经处理完成", recognizedText)
+            }
+            is InventoryChangeResult.InsufficientQuantity -> {
+                VoiceInputState.Error(
+                    "“${result.item.name}”剩余 ${result.remainingQuantity}，不能操作 $quantity",
+                    recognizedText
+                )
+            }
+            InventoryChangeResult.InvalidQuantity -> {
+                VoiceInputState.Error("数量必须大于 0", recognizedText)
+            }
+            InventoryChangeResult.Conflict -> {
+                VoiceInputState.Error("库存刚刚发生变化，请重新确认", recognizedText)
+            }
         }
     }
 }
 
 interface InventoryActionStore {
     suspend fun insert(item: Item): Long
-    suspend fun getItemById(id: Long): Item?
-    suspend fun markAsConsumed(id: Long, type: ConsumeType)
-    suspend fun updateUsedQuantity(id: Long, quantity: Int)
+    suspend fun applyInventoryChange(id: Long, quantity: Int, consumeType: ConsumeType): InventoryChangeResult
 }

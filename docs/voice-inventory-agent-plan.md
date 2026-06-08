@@ -319,15 +319,14 @@ app/src/main/java/com/jishiyong/data/repository/ItemRepository.kt
 消耗：
 
 1. 找到匹配物品。
-2. 计算 `usedQuantity + quantity`。
-3. 如果结果大于等于 `item.quantity`，调用 `markAsConsumed(item.id, ConsumeType.USED_UP)`。
-4. 否则调用 `updateUsedQuantity(item.id, newUsedQuantity)`。
+2. 调用 DAO/Repository 层的条件 delta 更新，要求 `usedQuantity + quantity <= item.quantity` 且 `isConsumed = 0`。
+3. 按 affected rows 和事务内复查结果判断成功、数量不足、已处理或并发冲突；不能用旧快照写入绝对 `usedQuantity`。
 
 丢弃：
 
 1. 找到匹配物品。
-2. 如果丢弃数量大于等于剩余数量，调用 `markAsConsumed(item.id, ConsumeType.DISCARDED)`。
-3. 如果只丢弃部分，更新 `usedQuantity`。
+2. 使用同一套条件 delta 更新，只是完成时写入 `ConsumeType.DISCARDED`。
+3. 按 affected rows 和事务内复查结果判断成功、数量不足、已处理或并发冲突。
 
 所有写入操作都必须经过本地校验，不能直接相信 AI 输出。
 
@@ -337,7 +336,7 @@ app/src/main/java/com/jishiyong/data/repository/ItemRepository.kt
 
 - 本地规则解析链路保留为 fallback。
 - LLM planner 已接入 OpenAI-compatible Chat Completions。
-- `HybridInventoryActionPlanner` 会先尝试 LLM，失败或无法解析时回到本地规则。
+- `HybridInventoryActionPlanner` 会先尝试 LLM；只有请求失败时回到本地规则，LLM 明确要求澄清时保留澄清。
 - UI 能展示当前是 `AI agent` 解析还是 `本地规则` 解析。
 - 所有新增、消耗、丢弃写库动作仍经过本地校验和用户确认。
 - 多候选库存仍由用户选择。

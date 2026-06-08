@@ -28,6 +28,7 @@ class RoomAgentMemoryStoreTest {
         assertTrue(dao.memories.any { it.searchableText.contains("常买") })
         assertTrue(dao.memories.all { it.searchableText.contains("蒙牛") })
         assertEquals(dao.memories.size, dao.ftsEntries.size)
+        assertEquals(1, dao.rewriteCalls)
     }
 
     @Test
@@ -71,6 +72,7 @@ class RoomAgentMemoryStoreTest {
         val memories = mutableListOf<AgentMemoryEntity>()
         val ftsEntries = mutableListOf<AgentMemoryFtsEntity>()
         var lastSearchQuery: String? = null
+        var rewriteCalls = 0
         private var nextId = 1L
 
         override suspend fun getAllMemories(): List<AgentMemoryEntity> {
@@ -116,6 +118,13 @@ class RoomAgentMemoryStoreTest {
                     )
                 }
             )
+        }
+
+        override suspend fun rewriteAllMemories(
+            transform: (List<AgentMemoryEntity>) -> List<AgentMemoryEntity>
+        ) {
+            rewriteCalls += 1
+            replaceAllMemories(transform(getAllMemories()))
         }
     }
 }

@@ -17,5 +17,6 @@ data class InventoryPlanningDiagnostic(
 
 enum class InventoryPlanningDiagnosticKind {
     LLM_FALLBACK,
+    LLM_CLARIFICATION,
     MEMORY_UNAVAILABLE
 }

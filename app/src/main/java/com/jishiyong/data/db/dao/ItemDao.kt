@@ -1,6 +1,7 @@
 package com.jishiyong.data.db.dao
 
 import androidx.room.*
+import com.jishiyong.data.db.InventoryChangeResult
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
@@ -141,12 +142,118 @@ interface ItemDao {
     suspend fun deleteAllConsumed()
 
     /** 标记为已消费 */
-    @Query("UPDATE items SET isConsumed = 1, consumeType = :type, updatedAt = :timestamp WHERE id = :id")
-    suspend fun markAsConsumed(id: Long, type: ConsumeType, timestamp: Long = System.currentTimeMillis())
+    @Query("""
+        UPDATE items
+        SET usedQuantity = quantity,
+            isConsumed = 1,
+            consumeType = :type,
+            updatedAt = :timestamp
+        WHERE id = :id
+        AND isConsumed = 0
+    """)
+    suspend fun markAsConsumed(id: Long, type: ConsumeType, timestamp: Long = System.currentTimeMillis()): Int
 
-    /** 更新已使用数量 */
-    @Query("UPDATE items SET usedQuantity = :quantity, updatedAt = :timestamp WHERE id = :id")
-    suspend fun updateUsedQuantity(id: Long, quantity: Int, timestamp: Long = System.currentTimeMillis())
+    @Query("""
+        UPDATE items
+        SET usedQuantity = CASE
+                WHEN usedQuantity + :delta >= quantity THEN quantity
+                ELSE usedQuantity + :delta
+            END,
+            isConsumed = CASE
+                WHEN usedQuantity + :delta >= quantity THEN 1
+                ELSE isConsumed
+            END,
+            consumeType = CASE
+                WHEN usedQuantity + :delta >= quantity THEN :consumeType
+                ELSE consumeType
+            END,
+            updatedAt = :timestamp
+        WHERE id = :id
+        AND isConsumed = 0
+        AND :delta > 0
+        AND usedQuantity + :delta <= quantity
+    """)
+    suspend fun applyPositiveInventoryDelta(
+        id: Long,
+        delta: Int,
+        consumeType: ConsumeType,
+        timestamp: Long = System.currentTimeMillis()
+    ): Int
+
+    @Query("""
+        UPDATE items
+        SET usedQuantity = usedQuantity + :delta,
+            updatedAt = :timestamp
+        WHERE id = :id
+        AND isConsumed = 0
+        AND :delta < 0
+        AND usedQuantity + :delta >= 0
+    """)
+    suspend fun applyNegativeInventoryDelta(
+        id: Long,
+        delta: Int,
+        timestamp: Long = System.currentTimeMillis()
+    ): Int
+
+    @Transaction
+    suspend fun applyInventoryChange(
+        id: Long,
+        quantity: Int,
+        consumeType: ConsumeType,
+        timestamp: Long = System.currentTimeMillis()
+    ): InventoryChangeResult {
+        if (quantity <= 0) return InventoryChangeResult.InvalidQuantity
+
+        if (applyPositiveInventoryDelta(id, quantity, consumeType, timestamp) == 1) {
+            return getItemById(id)
+                ?.let(InventoryChangeResult::Applied)
+                ?: InventoryChangeResult.Missing
+        }
+
+        val current = getItemById(id) ?: return InventoryChangeResult.Missing
+        if (current.isConsumed) return InventoryChangeResult.AlreadyConsumed
+
+        val remainingQuantity = (current.quantity - current.usedQuantity).coerceAtLeast(0)
+        if (remainingQuantity <= 0) {
+            return if (markAsConsumed(id, consumeType, timestamp) == 1) {
+                getItemById(id)?.let(InventoryChangeResult::Applied)
+                    ?: InventoryChangeResult.Missing
+            } else {
+                InventoryChangeResult.Conflict
+            }
+        }
+        if (quantity > remainingQuantity) {
+            return InventoryChangeResult.InsufficientQuantity(current, remainingQuantity)
+        }
+
+        return InventoryChangeResult.Conflict
+    }
+
+    @Transaction
+    suspend fun adjustUsedQuantity(
+        id: Long,
+        delta: Int,
+        timestamp: Long = System.currentTimeMillis()
+    ): InventoryChangeResult {
+        return when {
+            delta > 0 -> applyInventoryChange(id, delta, ConsumeType.USED_UP, timestamp)
+            delta < 0 -> {
+                if (applyNegativeInventoryDelta(id, delta, timestamp) == 1) {
+                    getItemById(id)
+                        ?.let(InventoryChangeResult::Applied)
+                        ?: InventoryChangeResult.Missing
+                } else {
+                    val current = getItemById(id) ?: return InventoryChangeResult.Missing
+                    if (current.isConsumed) {
+                        InventoryChangeResult.AlreadyConsumed
+                    } else {
+                        InventoryChangeResult.Conflict
+                    }
+                }
+            }
+            else -> InventoryChangeResult.InvalidQuantity
+        }
+    }
 }
 
 /** 分类统计结果 */

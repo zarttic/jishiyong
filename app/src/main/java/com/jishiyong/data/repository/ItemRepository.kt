@@ -3,6 +3,7 @@ package com.jishiyong.data.repository
 import com.jishiyong.data.db.dao.CategoryStat
 import com.jishiyong.data.db.dao.ConsumeStat
 import com.jishiyong.data.db.dao.ItemDao
+import com.jishiyong.data.db.InventoryChangeResult
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
@@ -86,8 +87,15 @@ class ItemRepository(private val itemDao: ItemDao) {
     suspend fun markAsConsumed(id: Long, type: ConsumeType) =
         itemDao.markAsConsumed(id, type)
 
-    suspend fun updateUsedQuantity(id: Long, quantity: Int) =
-        itemDao.updateUsedQuantity(id, quantity)
+    suspend fun applyInventoryChange(
+        id: Long,
+        quantity: Int,
+        consumeType: ConsumeType
+    ): InventoryChangeResult =
+        itemDao.applyInventoryChange(id, quantity, consumeType)
+
+    suspend fun adjustUsedQuantity(id: Long, delta: Int): InventoryChangeResult =
+        itemDao.adjustUsedQuantity(id, delta)
 
     suspend fun deleteAllConsumed() = itemDao.deleteAllConsumed()
 

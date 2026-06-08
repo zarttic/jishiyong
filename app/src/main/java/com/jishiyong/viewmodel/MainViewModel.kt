@@ -9,6 +9,7 @@ import com.jishiyong.agent.InventoryActionStore
 import com.jishiyong.agent.InventoryAgent
 import com.jishiyong.agent.InventoryAgentFactory
 import com.jishiyong.agent.VoiceInputState
+import com.jishiyong.data.db.InventoryChangeResult
 import com.jishiyong.data.db.entity.ConsumeType
 import com.jishiyong.data.db.entity.Item
 import com.jishiyong.data.db.entity.ItemCategory
@@ -36,14 +37,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val actionExecutor = InventoryActionExecutor()
     private val actionStore = object : InventoryActionStore {
         override suspend fun insert(item: Item): Long = repository.insert(item)
-        override suspend fun getItemById(id: Long): Item? = repository.getItemById(id)
-        override suspend fun markAsConsumed(id: Long, type: ConsumeType) {
-            repository.markAsConsumed(id, type)
-        }
-
-        override suspend fun updateUsedQuantity(id: Long, quantity: Int) {
-            repository.updateUsedQuantity(id, quantity)
-        }
+        override suspend fun applyInventoryChange(
+            id: Long,
+            quantity: Int,
+            consumeType: ConsumeType
+        ): InventoryChangeResult = repository.applyInventoryChange(id, quantity, consumeType)
     }
     private var hasCheckedForUpdates = false
     private var voiceParseJob: Job? = null
@@ -275,11 +273,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateUsedQuantity(item: Item, quantity: Int) {
         launchWriteOperation("数量更新失败，请稍后再试") {
-            if (quantity >= item.quantity) {
-                repository.markAsConsumed(item.id, ConsumeType.USED_UP)
-            } else {
-                repository.updateUsedQuantity(item.id, quantity.coerceAtLeast(0))
+            val delta = quantity.coerceAtLeast(0) - item.usedQuantity
+            if (delta != 0) {
+                handleInventoryChangeResult(repository.adjustUsedQuantity(item.id, delta))
             }
+        }
+    }
+
+    fun adjustUsedQuantity(item: Item, delta: Int) {
+        launchWriteOperation("数量更新失败，请稍后再试") {
+            handleInventoryChangeResult(repository.adjustUsedQuantity(item.id, delta))
         }
     }
 
@@ -300,6 +303,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getExpiryStatus(item: Item): ExpiryStatus = repository.getExpiryStatus(item)
     fun getDaysUntilExpiry(item: Item): Int = repository.getDaysUntilExpiry(item)
+
+    private fun handleInventoryChangeResult(result: InventoryChangeResult) {
+        when (result) {
+            is InventoryChangeResult.Applied -> Unit
+            InventoryChangeResult.Missing -> _operationError.value = "库存不存在或已被删除"
+            InventoryChangeResult.AlreadyConsumed -> _operationError.value = "该库存已经处理完成"
+            is InventoryChangeResult.InsufficientQuantity -> _operationError.value = "库存数量不足，请刷新后重试"
+            InventoryChangeResult.InvalidQuantity -> _operationError.value = "数量更新失败，请稍后再试"
+            InventoryChangeResult.Conflict -> _operationError.value = "库存刚刚发生变化，请刷新后重试"
+        }
+    }
 
     private fun launchWriteOperation(
         errorMessage: String,

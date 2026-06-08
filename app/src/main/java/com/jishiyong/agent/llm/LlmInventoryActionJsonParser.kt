@@ -44,14 +44,18 @@ class LlmInventoryActionJsonParser(
         val expirationDate = parseDate(item.optString("expiration_date"))
             ?: return InventoryAction.AskClarification("请补充物品的过期日期")
         val purchaseDate = parseDate(item.optString("purchase_date")) ?: today
-        val quantity = item.optPositiveInt("quantity") ?: 1
+        val quantityResult = item.positiveIntField("quantity")
+        if (quantityResult == PositiveIntField.Invalid) {
+            return InventoryAction.AskClarification("请确认物品数量")
+        }
+        val quantity = (quantityResult as? PositiveIntField.Valid)?.value ?: 1
         val reminderDays = item.optJSONArray("reminder_days").toReminderDays()
 
         return InventoryAction.AddItem(
             ItemDraft(
                 name = name,
                 category = parseCategory(item.optString("category"), name),
-                quantity = quantity.coerceAtLeast(1),
+                quantity = quantity,
                 purchaseDate = purchaseDate,
                 expirationDate = expirationDate,
                 reminderDays = reminderDays,
@@ -62,9 +66,9 @@ class LlmInventoryActionJsonParser(
 
     private fun parseInventoryChange(root: JSONObject, isDiscard: Boolean): InventoryAction {
         val item = root.optJSONObject("item")
-        val itemId = root.optPositiveLong("item_id")
-            ?: root.optPositiveLong("id")
-            ?: item?.optPositiveLong("id")
+        val itemId = root.positiveLongField("item_id").valueOrNull()
+            ?: root.positiveLongField("id").valueOrNull()
+            ?: item?.positiveLongField("id").valueOrNull()
         val itemName = listOf(
             root.optString("item_name"),
             root.optString("name"),
@@ -75,8 +79,14 @@ class LlmInventoryActionJsonParser(
             return InventoryAction.AskClarification(message)
         }
 
-        val quantity = (root.optPositiveInt("quantity") ?: item?.optPositiveInt("quantity") ?: 1)
-            .coerceAtLeast(1)
+        val rootQuantity = root.positiveIntField("quantity")
+        val itemQuantity = item?.positiveIntField("quantity") ?: PositiveIntField.Missing
+        if (rootQuantity == PositiveIntField.Invalid || itemQuantity == PositiveIntField.Invalid) {
+            return InventoryAction.AskClarification("请确认要操作的数量")
+        }
+        val quantity = (rootQuantity as? PositiveIntField.Valid)?.value
+            ?: (itemQuantity as? PositiveIntField.Valid)?.value
+            ?: 1
         return if (isDiscard) {
             InventoryAction.DiscardItem(itemName = itemName, quantity = quantity, itemId = itemId)
         } else {
@@ -99,20 +109,48 @@ class LlmInventoryActionJsonParser(
         }
     }
 
-    private fun JSONObject.optPositiveInt(name: String): Int? {
-        return when (val value = opt(name)) {
-            is Number -> value.toInt()
+    private fun JSONObject.positiveIntField(name: String): PositiveIntField {
+        if (!has(name) || isNull(name)) return PositiveIntField.Missing
+        val parsed = when (val value = opt(name)) {
+            is Number -> value.toPositiveIntOrNull()
             is String -> value.trim().toIntOrNull()
             else -> null
-        }?.takeIf { it > 0 }
+        }
+        return parsed
+            ?.takeIf { it > 0 }
+            ?.let(PositiveIntField::Valid)
+            ?: PositiveIntField.Invalid
     }
 
-    private fun JSONObject.optPositiveLong(name: String): Long? {
-        return when (val value = opt(name)) {
-            is Number -> value.toLong()
+    private fun JSONObject.positiveLongField(name: String): PositiveLongField {
+        if (!has(name) || isNull(name)) return PositiveLongField.Missing
+        val parsed = when (val value = opt(name)) {
+            is Number -> value.toPositiveLongOrNull()
             is String -> value.trim().toLongOrNull()
             else -> null
-        }?.takeIf { it > 0 }
+        }
+        return parsed
+            ?.takeIf { it > 0 }
+            ?.let(PositiveLongField::Valid)
+            ?: PositiveLongField.Invalid
+    }
+
+    private fun PositiveLongField.valueOrNull(): Long? {
+        return (this as? PositiveLongField.Valid)?.value
+    }
+
+    private fun Number.toPositiveIntOrNull(): Int? {
+        val doubleValue = toDouble()
+        val longValue = toLong()
+        return longValue
+            .takeIf { doubleValue == longValue.toDouble() && it in 1..Int.MAX_VALUE }
+            ?.toInt()
+    }
+
+    private fun Number.toPositiveLongOrNull(): Long? {
+        val doubleValue = toDouble()
+        val longValue = toLong()
+        return longValue.takeIf { doubleValue == longValue.toDouble() && it > 0 }
     }
 
     private fun JSONArray?.toReminderDays(): List<Int> {
@@ -161,5 +199,17 @@ class LlmInventoryActionJsonParser(
             }
         }
         return null
+    }
+
+    private sealed class PositiveIntField {
+        data object Missing : PositiveIntField()
+        data object Invalid : PositiveIntField()
+        data class Valid(val value: Int) : PositiveIntField()
+    }
+
+    private sealed class PositiveLongField {
+        data object Missing : PositiveLongField()
+        data object Invalid : PositiveLongField()
+        data class Valid(val value: Long) : PositiveLongField()
     }
 }

@@ -56,6 +56,16 @@ class LlmInventoryActionJsonParserTest {
     }
 
     @Test
+    fun parseAddItemInvalidQuantityAsksClarification() {
+        val action = parser.parse(
+            """{"action":"add_item","item":{"name":"牛奶","quantity":0,"expiration_date":"2026-06-12"}}""",
+            today
+        )
+
+        assertTrue(action is InventoryAction.AskClarification)
+    }
+
+    @Test
     fun parseMalformedJsonAsksClarification() {
         val action = parser.parse("""{"action":"consume_item","item_name":""", today)
 
@@ -88,5 +98,36 @@ class LlmInventoryActionJsonParserTest {
         assertEquals("", consume.itemName)
         assertEquals(2, consume.quantity)
         assertEquals(9L, consume.itemId)
+    }
+
+    @Test
+    fun parseConsumeItemInvalidQuantityAsksClarification() {
+        val action = parser.parse(
+            """{"action":"consume_item","item_id":9,"quantity":"two"}""",
+            today
+        )
+
+        assertTrue(action is InventoryAction.AskClarification)
+    }
+
+    @Test
+    fun parseConsumeItemNegativeQuantityAsksClarification() {
+        val action = parser.parse(
+            """{"action":"consume_item","item_id":9,"quantity":-2}""",
+            today
+        )
+
+        assertTrue(action is InventoryAction.AskClarification)
+    }
+
+    @Test
+    fun parseConsumeItemMissingQuantityDefaultsToOne() {
+        val action = parser.parse(
+            """{"action":"consume_item","item_id":9,"item_name":"蒙牛牛奶"}""",
+            today
+        )
+
+        assertTrue(action is InventoryAction.ConsumeItem)
+        assertEquals(1, (action as InventoryAction.ConsumeItem).quantity)
     }
 }

@@ -74,6 +74,7 @@ class LlmInventoryPromptBuilder {
             category 必须是 FOOD、DRINK、DAILY、MEDICINE、COSMETICS、ELECTRONICS、CLOTHING、OTHER 之一。
             日期必须是 YYYY-MM-DD。相对日期必须基于 today 计算。新增物品缺少过期日期时必须 ask_clarification。
             消耗或丢弃时优先使用 active_inventory 中最匹配库存的 id 和 name，但不要编造库存。
+            如果用户是在否定、取消、阻止或提问，例如“不要喝牛奶”“别把牛奶扔了”“要不要丢掉牛奶”，必须输出 ask_clarification，不要转成执行动作。
         """.trimIndent()
     }
 }
