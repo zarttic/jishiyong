@@ -20,7 +20,7 @@ class BaiduCloudSpeechRecognizer(
         if (!configuration.isComplete) {
             throw IllegalStateException("百度语音识别未配置")
         }
-        val audio = recorder.recordSpeechPcm()
+        val audio = recorder.recordSpeechPcm(appContext)
         onRecordingFinished()
         return client.recognizePcm(audio, configuration)
     }

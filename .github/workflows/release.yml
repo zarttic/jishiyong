@@ -99,12 +99,39 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
+      - name: Run Android lint
+        run: ./gradlew lintRelease
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-lint-reports
+          path: app/build/reports/lint-results-release.*
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Verify Room schemas are committed
         run: |
           set -euo pipefail
           if [ ! -d app/schemas ]; then
-            echo "::warning::Missing Room schema directory app/schemas; generate and commit the initial schema from an x86-64 Android SDK environment."
-            exit 0
+            echo "Missing Room schema directory app/schemas; generate and commit Room schemas from an x86-64 Android SDK environment."
+            exit 1
+          fi
+          if ! find app/schemas -name '*.json' -print -quit | grep -q .; then
+            echo "Room schema directory exists but contains no schema JSON files."
+            exit 1
           fi
           status="$(git status --porcelain -- app/schemas)"
           test -z "$status" || {

@@ -53,6 +53,7 @@
 
 ```
 app/src/main/java/com/jishiyong/
+├── AppContainer.kt                  # 应用依赖容器
 ├── data/
 │   ├── db/
 │   │   ├── AppDatabase.kt          # Room 数据库
@@ -97,7 +98,7 @@ app/src/main/java/com/jishiyong/
 ### 环境要求
 - Android Studio Hedgehog (2023.1.1) 或更高版本
 - JDK 17
-- Android SDK 34
+- Android SDK 35
 
 ### 构建步骤
 

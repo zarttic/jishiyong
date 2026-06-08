@@ -90,8 +90,9 @@ export ANDROID_KEY_PASSWORD=...
 Install or configure:
 
 - JDK 17.
-- Android SDK 34.
-- Android Build Tools compatible with AGP 8.2.2.
+- Android SDK 35.
+- Android Build Tools compatible with AGP 8.6.
+- Gradle 8.7, via the checked-in wrapper.
 - Git.
 - GitHub CLI, if the server will trigger or inspect Actions.
 
@@ -112,7 +113,7 @@ sdkmanager --licenses
 Install expected SDK packages if needed:
 
 ```bash
-sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 ```
 
 ## First Verification On x86-64

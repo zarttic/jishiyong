@@ -24,12 +24,14 @@ Default to GitHub CLI (`gh`) for GitHub-side operations such as inspecting refs,
 
 When repository configuration, build/release workflow inputs, required secrets, local environment constraints, or operational defaults change, update this `AGENTS.md` file in the same change so future agents use the current process.
 
+The `main` branch is protected. Required status checks must be up to date and the `build` GitHub Actions check must pass; administrators are included in the protection rule. Do not bypass this by pushing directly to `main`.
+
 ### Current Machine: Use GitHub Actions
 
 Current local environment is `aarch64`. Gradle downloads an x86-64 `aapt2` binary that cannot execute on this machine, so Android build/test verification must be run through GitHub workflows instead of local Gradle commands.
 
-- `gh workflow run build.yml --ref main`: run the authoritative debug build, JVM unit tests, and Room schema check on GitHub-hosted x86-64 runners.
-- `gh workflow run build.yml --ref main -f run_real_llm_smoke=true`: run the build workflow plus the real LLM smoke test when `AI_API_KEY` is configured.
+- `gh workflow run build.yml --ref "$(git branch --show-current)"`: run the authoritative debug build, JVM unit tests, lint, and Room schema check for the current branch on GitHub-hosted x86-64 runners.
+- `gh workflow run build.yml --ref "$(git branch --show-current)" -f run_real_llm_smoke=true`: run the build workflow plus the real LLM smoke test for the current branch when `AI_API_KEY` is configured.
 - `gh workflow run llm-smoke.yml --ref main -f ai_api_base_url="https://api.edgefn.net/v1" -f ai_model_name="DeepSeek-V3.2" -f recognized_text="今天喝了一瓶蒙牛纯牛奶"`: run only the real LLM smoke workflow.
 - `gh run watch`: follow the latest workflow run to completion.
 - `gh run view --log-failed`: inspect failed workflow logs.
@@ -46,11 +48,11 @@ Podman is available, but it is not by itself a fix for the local `aapt2` incompa
 - The available openEuler `qemu-user` / `qemu-user-static` packages provide arm/riscv interpreters here, not `qemu-x86_64`.
 - The installed Android SDK `aapt2` binaries are x86-64 and fail with `Exec format error`.
 
-These commands are appropriate on GitHub-hosted runners or another x86-64 Android SDK environment:
+These commands are appropriate on GitHub-hosted runners or another x86-64 Android SDK 35 / AGP 8.6 / Gradle 8.7 environment:
 
 - `./gradlew testDebugUnitTest`: runs JVM unit tests for the Android debug variant.
 - `./gradlew assembleDebug`: builds a local debug APK.
-- `./gradlew assembleRelease -PVERSION_NAME=2.4.2 -PVERSION_CODE=242`: builds a release APK; signing requires `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
+- `./gradlew assembleRelease -PVERSION_NAME=2.4.2 -PVERSION_CODE=242`: builds a release APK against Android SDK 35; signing requires `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
 - `./gradlew connectedAndroidTest`: runs instrumentation tests on a connected device or emulator.
 
 ## Coding Style & Naming Conventions
@@ -63,7 +65,7 @@ Add unit tests under `app/src/test/` and instrumentation/UI tests under `app/src
 
 For agent work, cover parser, planner, executor, matcher, memory, LLM JSON parsing, and failure/clarification paths under `app/src/test/java/com/jishiyong/agent/`. Keep real provider calls out of normal unit tests; use `llm-smoke.yml` or `build.yml` with `run_real_llm_smoke=true` for the real LLM smoke test.
 
-Room schema generation happens as part of the x86-64 build/test flow. The build workflow uploads `room-schemas`; if `app/schemas` changes, download the artifact, inspect the schema diff, and commit intentional schema updates with the migration. Do not commit generated APKs or temporary workflow artifacts.
+Room schema generation happens as part of the x86-64 build/test flow. The build workflow uploads `room-schemas`; missing `app/schemas` or an empty schema directory fails CI. If `app/schemas` changes, download the artifact, inspect the schema diff, and commit intentional schema updates with the migration. Do not commit generated APKs or temporary workflow artifacts. Build and release workflows also upload test and lint reports on every run.
 
 ## Commit & Pull Request Guidelines
 
