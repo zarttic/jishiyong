@@ -1,0 +1,65 @@
+site_name: 及时用 AI Agent 教学项目
+site_description: 从语音输入到库存操作的 Android AI Agent 实战教程
+site_url: https://zarttic.github.io/jishiyong/
+repo_url: https://github.com/zarttic/jishiyong
+repo_name: zarttic/jishiyong
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: green
+      accent: teal
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: green
+      accent: teal
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+nav:
+  - 首页: index.md
+  - Agent 开发总览: 01-agent-overview.md
+  - 项目架构: 02-architecture.md
+  - 语音到动作: 03-voice-to-action-flow.md
+  - 解析与规划: 04-parser-and-planner.md
+  - LLM 接入: 05-llm-integration.md
+  - 记忆与确认执行: 06-memory-confirmation.md
+  - 测试与 CI: 07-testing-and-ci.md
+  - 扩展指南: 08-extension-guide.md
+  - 附录:
+      - 语音库存 Agent 计划: voice-inventory-agent-plan.md
+      - 百度 ASR 直连配置: baidu-asr-direct-setup.md
+      - x86 开发迁移记录: x86-development-migration.md

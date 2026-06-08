@@ -16,6 +16,8 @@ Application code is under `app/src/main/java/com/jishiyong/`:
 
 Resources are in `app/src/main/res/`, including launcher assets, drawables, XML config, strings, and themes. GitHub Actions workflows are in `.github/workflows/`.
 
+Teaching documentation is maintained as MkDocs Material content under `docs/`, with navigation and site metadata in `mkdocs.yml`. The public documentation site is published through GitHub Pages at `https://zarttic.github.io/jishiyong/`.
+
 ## Build, Test, and Development Commands
 
 ### GitHub Operations
@@ -33,11 +35,14 @@ Current local environment is `aarch64`. Gradle downloads an x86-64 `aapt2` binar
 - `gh workflow run build.yml --ref "$(git branch --show-current)"`: run the authoritative debug build, JVM unit tests, lint, and Room schema check for the current branch on GitHub-hosted x86-64 runners.
 - `gh workflow run build.yml --ref "$(git branch --show-current)" -f run_real_llm_smoke=true`: run the build workflow plus the real LLM smoke test for the current branch when `AI_API_KEY` is configured.
 - `gh workflow run llm-smoke.yml --ref main -f ai_api_base_url="https://api.edgefn.net/v1" -f ai_model_name="DeepSeek-V3.2" -f recognized_text="今天喝了一瓶蒙牛纯牛奶"`: run only the real LLM smoke workflow.
+- `gh workflow run docs.yml --ref "$(git branch --show-current)"`: build and publish the MkDocs Material documentation site to GitHub Pages.
 - `gh run watch`: follow the latest workflow run to completion.
 - `gh run view --log-failed`: inspect failed workflow logs.
 - `gh workflow run release.yml --ref main -f version_name=X.Y.Z -f version_code=N -f release_notes="..."`: publish a signed GitHub Release through Actions.
 
 Use GitHub Actions for authoritative APK builds when local Android SDK tooling is unavailable or architecture-incompatible. Do not spend time retrying local Gradle Android build/test/schema generation unless the prerequisites below have changed.
+
+Documentation-only changes can be validated locally with `python3 -m pip install --upgrade mkdocs-material` and `mkdocs build --strict`; this does not require Android SDK tooling. GitHub Pages publishing still runs through `docs.yml`. For the first Pages deployment, ensure the repository's Pages source is set to GitHub Actions in GitHub repository settings.
 
 ### x86-64 Android SDK Environment
 
