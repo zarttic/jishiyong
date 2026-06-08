@@ -18,6 +18,12 @@ Resources are in `app/src/main/res/`, including launcher assets, drawables, XML 
 
 ## Build, Test, and Development Commands
 
+### GitHub Operations
+
+Default to GitHub CLI (`gh`) for GitHub-side operations such as inspecting refs, dispatching workflows, watching runs, viewing logs, creating or merging PRs, and checking release state.
+
+When repository configuration, build/release workflow inputs, required secrets, local environment constraints, or operational defaults change, update this `AGENTS.md` file in the same change so future agents use the current process.
+
 ### Current Machine: Use GitHub Actions
 
 Current local environment is `aarch64`. Gradle downloads an x86-64 `aapt2` binary that cannot execute on this machine, so Android build/test verification must be run through GitHub workflows instead of local Gradle commands.
